@@ -82,8 +82,8 @@ nav{display:flex;gap:0.5rem;align-items:center;}
 .vote-label{font-size:0.7rem;color:rgba(255,255,255,0.45);margin-left:0.25rem;}
 .vote-btn{display:flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);color:var(--dark);border:none;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.05em;transition:all 0.25s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);white-space:nowrap;}
 .vote-btn:hover:not(:disabled){background:linear-gradient(135deg,var(--gold-light),var(--gold));box-shadow:0 0 15px var(--shadow-gold);transform:scale(1.05);}
-.vote-btn.voted{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.15);cursor:default;clip-path:none;}
-.vote-btn:disabled{cursor:not-allowed;}
+.vote-btn.voted{background:rgba(245,197,24,0.12);color:var(--gold);border:1px solid rgba(245,197,24,0.4);clip-path:none;cursor:pointer;}
+.vote-btn.voted:hover{background:rgba(180,0,0,0.4);color:#ff9090;border-color:rgba(255,80,80,0.4);}
 .overlay{position:fixed;inset:0;background:rgba(10,0,0,0.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity 0.3s;}
 .overlay.open{opacity:1;pointer-events:all;}
 .modal{background:linear-gradient(145deg,#2a0505,#1a0000);border:1px solid rgba(245,197,24,0.4);border-top:3px solid var(--gold);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;transform:translateY(24px) scale(0.97);transition:transform 0.3s;box-shadow:0 20px 60px rgba(0,0,0,0.7),0 0 40px rgba(245,197,24,0.1);}
@@ -295,9 +295,26 @@ footer .fg{color:var(--gold);opacity:0.55;}
         <div class="drop-zone" id="drop-zone">
           <input type="file" id="f-file" accept="image/*" onchange="handleFile(this)">
           <div class="drop-icon">📸</div>
-          <div class="drop-text">點擊選擇照片，或拖曳圖片至此<br><small style="opacity:0.5">支援 JPG、PNG（最大 5MB）</small></div>
+          <div class="drop-text">點擊選擇照片，或拖曳圖片至此<br><small style="opacity:0.5">支援 JPG、PNG（最大 10MB）</small></div>
         </div>
-        <img class="preview-img" id="preview" alt="預覽">
+        <!-- 裁切區域 -->
+        <div id="crop-area" style="display:none;margin-top:1rem;">
+          <div style="font-size:0.78rem;color:var(--gold);letter-spacing:0.08em;margin-bottom:0.5rem;">✂ 拖曳調整裁切範圍</div>
+          <div style="position:relative;overflow:hidden;background:#000;border:1px solid rgba(245,197,24,0.3);">
+            <canvas id="crop-canvas" style="display:block;max-width:100%;cursor:crosshair;touch-action:none;"></canvas>
+          </div>
+          <div style="display:flex;gap:0.5rem;margin-top:0.6rem;flex-wrap:wrap;">
+            <button type="button" onclick="setCropRatio(1,1)" class="sort-btn" style="font-size:0.75rem;">1:1 正方形</button>
+            <button type="button" onclick="setCropRatio(4,3)" class="sort-btn" style="font-size:0.75rem;">4:3 橫式</button>
+            <button type="button" onclick="setCropRatio(3,4)" class="sort-btn" style="font-size:0.75rem;">3:4 直式</button>
+            <button type="button" onclick="setCropRatio(16,9)" class="sort-btn" style="font-size:0.75rem;">16:9 寬螢幕</button>
+            <button type="button" onclick="setCropRatio(0,0)" class="sort-btn" style="font-size:0.75rem;">自由裁切</button>
+          </div>
+          <div id="crop-preview-wrap" style="margin-top:0.75rem;display:none;">
+            <div style="font-size:0.72rem;color:rgba(255,255,255,0.45);margin-bottom:0.3rem;">裁切預覽：</div>
+            <img id="crop-preview" style="max-width:100%;max-height:150px;object-fit:contain;border:1px solid rgba(245,197,24,0.2);" alt="">
+          </div>
+        </div>
       </div>
       <button class="submit-btn" id="submit-btn" onclick="submitPhoto()">★ 提交英雄作品 ★</button>
     </div>
@@ -457,8 +474,8 @@ function renderGallery(){
         <div><span class="vote-count">${p.votes||0}</span><span class="vote-label">票</span></div>
         <div style="display:flex;gap:0.5rem;align-items:center;">
           <button class="delete-btn" onclick="deletePhoto(event,'${p.id}')">🗑 刪除</button>
-          <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')" ${voted?'disabled':''}>
-            ${voted?'✓ 已投票':'★ 投票'}
+          <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')">
+            ${voted?'✓ 已投票 ↩':'★ 投票'}
           </button>
         </div>
       </div>
@@ -494,25 +511,42 @@ function renderLeaderboard(){
 }
 
 window.vote = async function(id){
-  if(myVotes[id]){ toast('你已經為這件作品投過票了','info'); return; }
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
+  const alreadyVoted = myVotes[id];
   try {
     const photoRef = doc(db, 'photos', id);
     await runTransaction(db, async (tx)=>{
       const snap = await tx.get(photoRef);
       if(!snap.exists()) throw new Error('找不到作品');
-      tx.update(photoRef, { votes: increment(1), voterCount: increment(1) });
+      if(alreadyVoted){
+        // 撤銷投票
+        tx.update(photoRef, { votes: increment(-1), voterCount: increment(-1) });
+      } else {
+        // 投票
+        tx.update(photoRef, { votes: increment(1), voterCount: increment(1) });
+      }
     });
-    myVotes[id] = true;
+    if(alreadyVoted){
+      delete myVotes[id];
+      toast('↩ 已撤銷投票','info');
+    } else {
+      myVotes[id] = true;
+      toast('★ 投票成功！感謝你為英雄發聲！');
+    }
     saveMyVotes();
-    toast('★ 投票成功！感謝你為英雄發聲！');
     // 更新 detail modal 按鈕
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
-      btn.textContent='✓ 已投票'; btn.className='vote-btn voted'; btn.disabled=true;
+      if(myVotes[id]){
+        btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; 
+      } else {
+        btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
+      }
+      const p = photos.find(x=>x.id===id);
+      if(p) document.getElementById('detail-votes').innerHTML=(p.votes||0)+'<small>票</small>';
     }
   } catch(e){
-    toast('投票失敗，請再試一次','error');
+    toast('操作失敗，請再試一次','error');
     console.error(e);
   }
 };
@@ -580,23 +614,207 @@ window.closeUpload = function(){ document.getElementById('upload-overlay').class
 
 function resetForm(){
   ['f-title','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
-  const p=document.getElementById('preview'); p.style.display='none'; p.src='';
   document.getElementById('f-file').value='';
+  document.getElementById('drop-zone').style.display='block';
+  document.getElementById('crop-area').style.display='none';
+  document.getElementById('crop-preview-wrap').style.display='none';
+  const canvas=document.getElementById('crop-canvas');
+  canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
   currentImgData=null;
 }
 
 window.handleFile = function(input){
   const file = input.files[0];
   if(!file) return;
-  if(file.size > 5*1024*1024){ toast('圖片不能超過 5MB','error'); return; }
+  if(file.size > 10*1024*1024){ toast('圖片不能超過 10MB','error'); return; }
   const r = new FileReader();
-  r.onload = e => {
-    currentImgData = e.target.result;
-    const p = document.getElementById('preview');
-    p.src = currentImgData; p.style.display = 'block';
-  };
+  r.onload = e => { initCrop(e.target.result); };
   r.readAsDataURL(file);
 };
+
+// ── CROP ENGINE ──
+let cropImg = new Image();
+let cropRatioW = 0, cropRatioH = 0; // 0,0 = free
+let cropBox = {x:0,y:0,w:0,h:0};
+let dragging = false, resizing = false, dragStart = {x:0,y:0};
+let resizeHandle = '';
+let canvasScale = 1;
+const HANDLE_SIZE = 10;
+
+function initCrop(dataUrl){
+  cropImg = new Image();
+  cropImg.onload = ()=>{
+    document.getElementById('drop-zone').style.display='none';
+    document.getElementById('crop-area').style.display='block';
+    const canvas = document.getElementById('crop-canvas');
+    const maxW = canvas.parentElement.clientWidth || 480;
+    canvasScale = Math.min(1, maxW / cropImg.width);
+    canvas.width = Math.round(cropImg.width * canvasScale);
+    canvas.height = Math.round(cropImg.height * canvasScale);
+    // default crop = full image
+    cropBox = {x:0,y:0,w:canvas.width,h:canvas.height};
+    drawCrop();
+    updateCropPreview();
+    currentImgData = null; // will be set on submit
+  };
+  cropImg.src = dataUrl;
+}
+
+function drawCrop(){
+  const canvas = document.getElementById('crop-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(cropImg,0,0,canvas.width,canvas.height);
+  // dim outside
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // clear crop box
+  ctx.clearRect(cropBox.x,cropBox.y,cropBox.w,cropBox.h);
+  ctx.drawImage(cropImg, cropBox.x/canvasScale, cropBox.y/canvasScale, cropBox.w/canvasScale, cropBox.h/canvasScale, cropBox.x,cropBox.y,cropBox.w,cropBox.h);
+  // border
+  ctx.strokeStyle='rgba(245,197,24,0.9)';
+  ctx.lineWidth=2;
+  ctx.strokeRect(cropBox.x,cropBox.y,cropBox.w,cropBox.h);
+  // grid lines
+  ctx.strokeStyle='rgba(255,255,255,0.3)';
+  ctx.lineWidth=1;
+  for(let i=1;i<3;i++){
+    ctx.beginPath(); ctx.moveTo(cropBox.x+cropBox.w*i/3,cropBox.y); ctx.lineTo(cropBox.x+cropBox.w*i/3,cropBox.y+cropBox.h); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cropBox.x,cropBox.y+cropBox.h*i/3); ctx.lineTo(cropBox.x+cropBox.w,cropBox.y+cropBox.h*i/3); ctx.stroke();
+  }
+  // handles
+  const handles = getHandles();
+  ctx.fillStyle='var(--gold)';
+  Object.values(handles).forEach(h=>{
+    ctx.fillStyle='#f5c518';
+    ctx.fillRect(h.x-HANDLE_SIZE/2,h.y-HANDLE_SIZE/2,HANDLE_SIZE,HANDLE_SIZE);
+  });
+}
+
+function getHandles(){
+  const {x,y,w,h}=cropBox;
+  return {
+    nw:{x,y}, n:{x:x+w/2,y}, ne:{x:x+w,y},
+    w:{x,y:y+h/2},             e:{x:x+w,y:y+h/2},
+    sw:{x,y:y+h}, s:{x:x+w/2,y:y+h}, se:{x:x+w,y:y+h}
+  };
+}
+
+function hitHandle(px,py){
+  const handles=getHandles();
+  for(const[k,h] of Object.entries(handles)){
+    if(Math.abs(px-h.x)<HANDLE_SIZE && Math.abs(py-h.y)<HANDLE_SIZE) return k;
+  }
+  return '';
+}
+
+function insideCrop(px,py){ return px>=cropBox.x&&px<=cropBox.x+cropBox.w&&py>=cropBox.y&&py<=cropBox.y+cropBox.h; }
+
+function getPos(e, canvas){
+  const rect=canvas.getBoundingClientRect();
+  const src=e.touches?e.touches[0]:e;
+  return {x:src.clientX-rect.left, y:src.clientY-rect.top};
+}
+
+function applyRatio(startX,startY,w,h){
+  if(cropRatioW===0||cropRatioH===0) return {x:startX,y:startY,w,h};
+  const ratio=cropRatioW/cropRatioH;
+  const newH=w/ratio;
+  return {x:startX,y:startY,w,h:newH};
+}
+
+function clampBox(b, cw, ch){
+  b.w=Math.max(40,b.w); b.h=Math.max(40,b.h);
+  b.x=Math.max(0,Math.min(b.x,cw-b.w));
+  b.y=Math.max(0,Math.min(b.y,ch-b.h));
+  if(b.x+b.w>cw) b.w=cw-b.x;
+  if(b.y+b.h>ch) b.h=ch-b.y;
+  return b;
+}
+
+function updateCropPreview(){
+  const out=document.createElement('canvas');
+  out.width=Math.round(cropBox.w/canvasScale);
+  out.height=Math.round(cropBox.h/canvasScale);
+  out.getContext('2d').drawImage(cropImg, cropBox.x/canvasScale, cropBox.y/canvasScale, out.width, out.height, 0,0,out.width,out.height);
+  const previewEl=document.getElementById('crop-preview');
+  previewEl.src=out.toDataURL('image/jpeg',0.9);
+  document.getElementById('crop-preview-wrap').style.display='block';
+}
+
+function getCroppedDataUrl(){
+  const out=document.createElement('canvas');
+  const maxW=1200;
+  let w=Math.round(cropBox.w/canvasScale), h=Math.round(cropBox.h/canvasScale);
+  if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
+  out.width=w; out.height=h;
+  out.getContext('2d').drawImage(cropImg, cropBox.x/canvasScale, cropBox.y/canvasScale, Math.round(cropBox.w/canvasScale), Math.round(cropBox.h/canvasScale), 0,0,w,h);
+  return out.toDataURL('image/jpeg',0.85);
+}
+
+window.setCropRatio = function(rw,rh){
+  cropRatioW=rw; cropRatioH=rh;
+  document.querySelectorAll('#crop-area .sort-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  if(rw>0&&rh>0){
+    const canvas=document.getElementById('crop-canvas');
+    const ratio=rw/rh;
+    let w=cropBox.w, h=w/ratio;
+    if(h>canvas.height){h=canvas.height;w=h*ratio;}
+    cropBox.w=Math.round(w); cropBox.h=Math.round(h);
+    cropBox=clampBox(cropBox,canvas.width,canvas.height);
+    drawCrop(); updateCropPreview();
+  }
+};
+
+// Mouse events
+const cropCanvas = document.getElementById('crop-canvas');
+function onDown(e){
+  e.preventDefault();
+  const pos=getPos(e,cropCanvas);
+  const h=hitHandle(pos.x,pos.y);
+  if(h){ resizing=true; resizeHandle=h; dragStart={x:pos.x,y:pos.y}; return; }
+  if(insideCrop(pos.x,pos.y)){ dragging=true; dragStart={x:pos.x-cropBox.x,y:pos.y-cropBox.y}; return; }
+  // new crop
+  dragging=false; resizing=false;
+  dragStart={x:pos.x,y:pos.y};
+  cropBox={x:pos.x,y:pos.y,w:1,h:1};
+  resizing=true; resizeHandle='se';
+}
+function onMove(e){
+  e.preventDefault();
+  if(!dragging&&!resizing) return;
+  const pos=getPos(e,cropCanvas);
+  const canvas=document.getElementById('crop-canvas');
+  if(dragging){
+    cropBox.x=pos.x-dragStart.x; cropBox.y=pos.y-dragStart.y;
+    cropBox=clampBox(cropBox,canvas.width,canvas.height);
+  } else {
+    const ox=cropBox.x,oy=cropBox.y,ow=cropBox.w,oh=cropBox.h;
+    let {x,y,w,h}={x:ox,y:oy,w:ow,h:oh};
+    const dx=pos.x-dragStart.x, dy=pos.y-dragStart.y;
+    dragStart={x:pos.x,y:pos.y};
+    if(resizeHandle.includes('e')) w+=dx;
+    if(resizeHandle.includes('s')) h+=dy;
+    if(resizeHandle.includes('w')){ x+=dx; w-=dx; }
+    if(resizeHandle.includes('n')){ y+=dy; h-=dy; }
+    if(cropRatioW>0&&cropRatioH>0){
+      if(resizeHandle==='se'||resizeHandle==='e'||resizeHandle==='s') h=w/cropRatioW*cropRatioH;
+      else if(resizeHandle==='nw'||resizeHandle==='n'||resizeHandle==='w') h=w/cropRatioW*cropRatioH;
+    }
+    if(w>20&&h>20) cropBox={x:Math.max(0,x),y:Math.max(0,y),w,h};
+    cropBox=clampBox(cropBox,canvas.width,canvas.height);
+  }
+  drawCrop();
+}
+function onUp(){ dragging=false; resizing=false; updateCropPreview(); }
+
+cropCanvas.addEventListener('mousedown',onDown);
+cropCanvas.addEventListener('mousemove',onMove);
+cropCanvas.addEventListener('mouseup',onUp);
+cropCanvas.addEventListener('touchstart',onDown,{passive:false});
+cropCanvas.addEventListener('touchmove',onMove,{passive:false});
+cropCanvas.addEventListener('touchend',onUp);
 
 const dz = document.getElementById('drop-zone');
 dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('dragover');});
@@ -641,8 +859,13 @@ window.submitPhoto = async function(){
   btn.disabled = true; btn.textContent = '上傳中，請稍候...';
 
   try {
-    // 壓縮圖片後直接存入 Firestore（不需要 Storage）
-    const compressed = await compressImage(currentImgData, 800, 0.7);
+    // 取得裁切後圖片
+    const imgData = document.getElementById('crop-area').style.display !== 'none'
+      ? getCroppedDataUrl()
+      : currentImgData;
+    if(!imgData){ toast('請選擇一張照片','error'); btn.disabled=false; btn.textContent='★ 提交英雄作品 ★'; return; }
+
+    const compressed = await compressImage(imgData, 1200, 0.85);
 
     await addDoc(collection(db, 'photos'), {
       title, author, description: desc,
@@ -672,8 +895,11 @@ window.openDetail = function(id){
   document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
   document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
   const btn = document.getElementById('detail-vote-btn');
-  if(myVotes[id]){ btn.textContent='✓ 已投票'; btn.className='vote-btn voted'; btn.disabled=true; }
-  else { btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false; }
+  if(myVotes[id]){
+    btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; btn.disabled=false;
+  } else {
+    btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
+  }
   document.getElementById('detail-overlay').classList.add('open');
 };
 
