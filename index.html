@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -556,12 +557,13 @@ window.vote = async function(id){
     });
     if(alreadyVoted){
       delete myVotes[id];
+      saveMyVotes();
       toast('↩ 已撤銷投票，可重新選擇其他作品','info');
     } else {
       myVotes[id] = true;
+      saveMyVotes();
       toast('★ 投票成功！感謝你為英雄發聲！');
     }
-    saveMyVotes();
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
       if(myVotes[id]){
