@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>職場英雄 · 勞工票選</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--red:#c0100e;--red-deep:#8b0000;--red-light:#e8201e;--gold:#f5c518;--gold-deep:#c9920a;--gold-light:#ffe580;--white:#ffffff;--dark:#1a0505;--shadow-gold:rgba(245,197,24,0.5);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--red-deep);color:var(--white);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:radial-gradient(circle at 20% 20%,rgba(245,197,24,0.06) 0%,transparent 50%),radial-gradient(circle at 80% 80%,rgba(245,197,24,0.06) 0%,transparent 50%),repeating-linear-gradient(45deg,transparent,transparent 30px,rgba(255,255,255,0.015) 30px,rgba(255,255,255,0.015) 31px);pointer-events:none;z-index:0;}
+
+/* LOADING SCREEN */
+#loading-screen{position:fixed;inset:0;background:var(--dark);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
+#loading-screen .ls-shield{font-size:4rem;animation:pulse 1.5s ease-in-out infinite;}
+#loading-screen .ls-text{font-family:'Noto Serif TC',serif;color:var(--gold);font-size:1.1rem;letter-spacing:0.15em;}
+#loading-screen .ls-sub{color:rgba(255,255,255,0.4);font-size:0.8rem;letter-spacing:0.1em;}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1;}50%{transform:scale(1.1);opacity:0.7;}}
+
+header{background:linear-gradient(135deg,var(--dark) 0%,var(--red-deep) 40%,#6b0000 100%);border-bottom:3px solid var(--gold);position:sticky;top:0;z-index:100;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:0 2rem;max-width:1400px;margin:0 auto;}
+.logo{display:flex;align-items:center;gap:0.75rem;padding:0.85rem 0;}
+.logo-shield{width:44px;height:44px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);clip-path:polygon(50% 0%,100% 15%,100% 60%,50% 100%,0% 60%,0% 15%);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--red-deep);flex-shrink:0;box-shadow:0 0 12px var(--shadow-gold);}
+.logo-main{font-family:'Noto Serif TC',serif;font-size:1.3rem;font-weight:900;color:var(--gold);letter-spacing:0.08em;text-shadow:0 0 15px rgba(245,197,24,0.5);}
+.logo-sub{font-size:0.62rem;color:rgba(255,255,255,0.45);letter-spacing:0.2em;}
+nav{display:flex;gap:0.5rem;align-items:center;}
+.nav-btn{background:none;border:1px solid rgba(245,197,24,0.3);color:rgba(255,255,255,0.8);padding:0.45rem 1.1rem;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:0.82rem;letter-spacing:0.05em;transition:all 0.2s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);}
+.nav-btn:hover,.nav-btn.active{background:rgba(245,197,24,0.15);border-color:var(--gold);color:var(--gold);}
+.nav-btn.primary{background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);color:var(--dark);border-color:var(--gold);font-weight:700;box-shadow:0 0 12px var(--shadow-gold);}
+.nav-btn.primary:hover{background:linear-gradient(135deg,var(--gold-light),var(--gold));box-shadow:0 0 20px var(--shadow-gold);}
+
+.hero{position:relative;z-index:1;background:linear-gradient(180deg,var(--dark) 0%,var(--red-deep) 50%,var(--red) 100%);padding:3.5rem 2rem 5rem;text-align:center;overflow:hidden;}
+.hero::before{content:'';position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(ellipse at center,rgba(245,197,24,0.12) 0%,transparent 60%);animation:pulse 4s ease-in-out infinite;}
+.star-deco{position:absolute;color:var(--gold);animation:twinkle 2s ease-in-out infinite;opacity:0.6;}
+.s1{top:12%;left:5%;font-size:1.5rem;animation-delay:0s;}.s2{top:20%;right:8%;font-size:2rem;animation-delay:0.5s;}.s3{top:55%;left:3%;font-size:1rem;animation-delay:1s;}.s4{top:60%;right:5%;font-size:1.5rem;animation-delay:1.5s;}.s5{bottom:25%;left:10%;font-size:2.5rem;animation-delay:0.8s;}.s6{bottom:20%;right:12%;font-size:1.2rem;animation-delay:0.3s;}
+@keyframes twinkle{0%,100%{opacity:0.6;transform:scale(1);}50%{opacity:1;transform:scale(1.2);}}
+.hero-badge{display:inline-block;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);color:var(--dark);font-size:0.75rem;font-weight:700;letter-spacing:0.2em;padding:0.35rem 1.4rem;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);margin-bottom:1.2rem;position:relative;z-index:1;}
+.hero-title{font-family:'Noto Serif TC',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:900;line-height:1.2;position:relative;z-index:1;margin-bottom:0.5rem;}
+.hero-title .t1{color:var(--white);text-shadow:2px 2px 0 var(--red-deep),0 0 30px rgba(0,0,0,0.5);}
+.hero-title .t2{color:var(--gold);text-shadow:0 0 20px var(--shadow-gold),2px 2px 0 var(--gold-deep);}
+.hero-sub{font-size:0.95rem;color:rgba(255,255,255,0.65);letter-spacing:0.12em;margin-bottom:2.5rem;position:relative;z-index:1;}
+.hero-div{display:flex;align-items:center;justify-content:center;gap:0.75rem;margin-bottom:2rem;position:relative;z-index:1;}
+.hero-div::before,.hero-div::after{content:'';flex:1;max-width:200px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.hero-div span{color:var(--gold);}
+.hero-stats{display:flex;justify-content:center;gap:2rem;position:relative;z-index:1;flex-wrap:wrap;}
+.stat{text-align:center;background:rgba(0,0,0,0.3);border:1px solid rgba(245,197,24,0.3);padding:1rem 1.5rem;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);min-width:100px;}
+.stat-num{font-family:'Noto Serif TC',serif;font-size:2rem;font-weight:900;color:var(--gold);text-shadow:0 0 15px var(--shadow-gold);}
+.stat-label{font-size:0.7rem;color:rgba(255,255,255,0.55);letter-spacing:0.1em;margin-top:2px;}
+.gold-band{height:6px;background:linear-gradient(90deg,var(--gold-deep),var(--gold),var(--gold-light),var(--gold),var(--gold-deep));position:relative;z-index:2;}
+.tabs{display:flex;background:linear-gradient(90deg,var(--red-deep),#700000,var(--red-deep));border-bottom:2px solid rgba(245,197,24,0.4);padding:0 2rem;position:relative;z-index:1;}
+.tab{padding:0.9rem 1.5rem;cursor:pointer;font-size:0.88rem;color:rgba(255,255,255,0.55);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.2s;letter-spacing:0.08em;font-weight:500;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);text-shadow:0 0 10px var(--shadow-gold);}
+.main{padding:2rem;max-width:1400px;margin:0 auto;position:relative;z-index:1;}
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem;}
+.count-label{font-size:0.85rem;color:rgba(255,255,255,0.55);}
+.count-label strong{color:var(--gold);}
+.sort-group{display:flex;gap:0.4rem;}
+.sort-btn{padding:0.4rem 1rem;background:rgba(0,0,0,0.3);border:1px solid rgba(245,197,24,0.25);color:rgba(255,255,255,0.55);cursor:pointer;font-size:0.78rem;font-family:'Noto Sans TC',sans-serif;letter-spacing:0.05em;transition:all 0.2s;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);}
+.sort-btn:hover,.sort-btn.active{background:rgba(245,197,24,0.15);border-color:var(--gold);color:var(--gold);}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;}
+.card{background:linear-gradient(145deg,rgba(139,0,0,0.8),rgba(80,0,0,0.9));border:1px solid rgba(245,197,24,0.22);overflow:hidden;cursor:pointer;position:relative;transition:transform 0.3s,box-shadow 0.3s;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0;transition:opacity 0.3s;}
+.card:hover{transform:translateY(-6px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 20px rgba(245,197,24,0.2);}
+.card:hover::before{opacity:1;}
+.rank-badge{position:absolute;top:0.75rem;left:0.75rem;z-index:3;width:2.2rem;height:2.5rem;display:flex;align-items:center;justify-content:center;font-family:'Noto Serif TC',serif;font-weight:900;font-size:1rem;clip-path:polygon(50% 0%,100% 20%,100% 80%,50% 100%,0% 80%,0% 20%);}
+.rg{background:linear-gradient(135deg,var(--gold-light),var(--gold));color:var(--dark);}
+.rs{background:linear-gradient(135deg,#e0e0e0,#9e9e9e);color:#333;}
+.rb{background:linear-gradient(135deg,#e8a87c,#c47b40);color:white;}
+.ro{background:rgba(0,0,0,0.6);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.2);}
+.card-img-wrap{position:relative;overflow:hidden;}
+.card-img{width:100%;height:230px;object-fit:cover;display:block;transition:transform 0.4s;}
+.card:hover .card-img{transform:scale(1.05);}
+.card-img-ph{width:100%;height:230px;background:linear-gradient(135deg,rgba(139,0,0,0.5),rgba(40,0,0,0.8));display:flex;align-items:center;justify-content:center;font-size:3.5rem;opacity:0.7;}
+.card-overlay{position:absolute;bottom:0;left:0;right:0;height:60%;background:linear-gradient(0deg,rgba(26,5,5,0.9) 0%,transparent 100%);pointer-events:none;}
+.card-body{padding:1rem 1.1rem 0.5rem;}
+.card-title{font-family:'Noto Serif TC',serif;font-size:1rem;font-weight:700;color:var(--white);margin-bottom:0.35rem;line-height:1.4;}
+.card-author{font-size:0.75rem;color:var(--gold);letter-spacing:0.06em;margin-bottom:0.5rem;}
+.card-desc{font-size:0.8rem;color:rgba(255,255,255,0.5);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-footer{display:flex;align-items:center;justify-content:space-between;padding:0.8rem 1.1rem;margin-top:0.5rem;border-top:1px solid rgba(245,197,24,0.18);}
+.vote-count{font-family:'Noto Serif TC',serif;font-size:1.6rem;font-weight:900;color:var(--gold);text-shadow:0 0 10px var(--shadow-gold);line-height:1;}
+.vote-label{font-size:0.7rem;color:rgba(255,255,255,0.45);margin-left:0.25rem;}
+.vote-btn{display:flex;align-items:center;gap:0.4rem;padding:0.5rem 1.1rem;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);color:var(--dark);border:none;cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:0.8rem;font-weight:700;letter-spacing:0.05em;transition:all 0.25s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);white-space:nowrap;}
+.vote-btn:hover:not(:disabled){background:linear-gradient(135deg,var(--gold-light),var(--gold));box-shadow:0 0 15px var(--shadow-gold);transform:scale(1.05);}
+.vote-btn.voted{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.15);cursor:default;clip-path:none;}
+.vote-btn:disabled{cursor:not-allowed;}
+.overlay{position:fixed;inset:0;background:rgba(10,0,0,0.85);z-index:200;display:flex;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity 0.3s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:linear-gradient(145deg,#2a0505,#1a0000);border:1px solid rgba(245,197,24,0.4);border-top:3px solid var(--gold);width:100%;max-width:560px;max-height:90vh;overflow-y:auto;transform:translateY(24px) scale(0.97);transition:transform 0.3s;box-shadow:0 20px 60px rgba(0,0,0,0.7),0 0 40px rgba(245,197,24,0.1);}
+.overlay.open .modal{transform:translateY(0) scale(1);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;border-bottom:1px solid rgba(245,197,24,0.22);background:rgba(0,0,0,0.3);}
+.modal-title{display:flex;align-items:center;gap:0.6rem;font-family:'Noto Serif TC',serif;font-size:1.2rem;font-weight:700;color:var(--gold);}
+.close-btn{background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.55);width:2rem;height:2rem;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border-radius:2px;}
+.close-btn:hover{border-color:var(--gold);color:var(--gold);}
+.modal-body{padding:1.5rem;}
+.field{margin-bottom:1.1rem;}
+label{display:block;font-size:0.72rem;font-weight:700;letter-spacing:0.15em;color:var(--gold);margin-bottom:0.4rem;text-transform:uppercase;}
+input[type=text],textarea{width:100%;padding:0.65rem 0.9rem;background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.25);color:var(--white);font-family:'Noto Sans TC',sans-serif;font-size:0.88rem;outline:none;transition:border-color 0.2s;border-radius:2px;}
+input[type=text]:focus,textarea:focus{border-color:var(--gold);}
+input[type=text]::placeholder,textarea::placeholder{color:rgba(255,255,255,0.22);}
+textarea{resize:vertical;min-height:85px;}
+.drop-zone{border:2px dashed rgba(245,197,24,0.35);padding:2rem 1rem;text-align:center;cursor:pointer;transition:all 0.2s;background:rgba(0,0,0,0.3);position:relative;border-radius:2px;}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--gold);background:rgba(245,197,24,0.05);}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.drop-icon{font-size:2.5rem;margin-bottom:0.6rem;}
+.drop-text{font-size:0.82rem;color:rgba(255,255,255,0.45);line-height:1.6;}
+.preview-img{width:100%;height:180px;object-fit:cover;display:none;margin-top:1rem;border:1px solid rgba(245,197,24,0.3);border-radius:2px;}
+.submit-btn{width:100%;padding:0.9rem;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-deep) 100%);color:var(--dark);border:none;font-family:'Noto Serif TC',serif;font-size:1rem;font-weight:900;letter-spacing:0.15em;cursor:pointer;transition:all 0.25s;clip-path:polygon(12px 0%,100% 0%,calc(100% - 12px) 100%,0% 100%);margin-top:0.5rem;}
+.submit-btn:hover{background:linear-gradient(135deg,var(--gold-light),var(--gold));box-shadow:0 0 20px var(--shadow-gold);}
+.submit-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.leaderboard-wrap{max-width:720px;margin:0 auto;}
+.lb-header{text-align:center;margin-bottom:2rem;}
+.lb-title{font-family:'Noto Serif TC',serif;font-size:1.8rem;font-weight:900;color:var(--gold);text-shadow:0 0 20px var(--shadow-gold);margin-bottom:0.3rem;}
+.lb-sub{font-size:0.82rem;color:rgba(255,255,255,0.45);}
+.lb-item{display:flex;align-items:center;gap:1.1rem;background:linear-gradient(90deg,rgba(139,0,0,0.6),rgba(80,0,0,0.4));border:1px solid rgba(245,197,24,0.18);border-left:3px solid transparent;padding:1rem 1.25rem;margin-bottom:0.75rem;transition:all 0.25s;}
+.lb-item:hover{transform:translateX(5px);}
+.lb-item.t1{border-left-color:var(--gold);}
+.lb-item.t2{border-left-color:#c0c0c0;}
+.lb-item.t3{border-left-color:#c47b40;}
+.lb-rank{font-family:'Noto Serif TC',serif;font-size:1.5rem;font-weight:900;width:2rem;text-align:center;flex-shrink:0;}
+.lb-rank.r1{color:var(--gold);text-shadow:0 0 12px var(--shadow-gold);}
+.lb-rank.r2{color:#c0c0c0;}
+.lb-rank.r3{color:#c47b40;}
+.lb-rank.ro{color:rgba(255,255,255,0.3);}
+.lb-thumb{width:60px;height:60px;object-fit:cover;flex-shrink:0;border:2px solid rgba(245,197,24,0.25);}
+.lb-thumb-ph{width:60px;height:60px;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
+.lb-info{flex:1;min-width:0;}
+.lb-name{font-family:'Noto Serif TC',serif;font-size:0.95rem;font-weight:700;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:0.2rem;}
+.lb-author{font-size:0.75rem;color:var(--gold);opacity:0.8;}
+.lb-bar{height:4px;background:rgba(0,0,0,0.4);border-radius:2px;margin-top:0.5rem;overflow:hidden;}
+.lb-bar-fill{height:100%;background:linear-gradient(90deg,var(--gold-deep),var(--gold));border-radius:2px;transition:width 0.8s ease;}
+.lb-votes-col{text-align:right;flex-shrink:0;}
+.lb-votes-num{font-family:'Noto Serif TC',serif;font-size:1.8rem;font-weight:900;color:var(--gold);text-shadow:0 0 10px var(--shadow-gold);line-height:1;}
+.lb-votes-lbl{font-size:0.65rem;color:rgba(255,255,255,0.45);letter-spacing:0.1em;margin-top:2px;}
+.detail-img{width:100%;max-height:480px;object-fit:contain;background:var(--dark);display:block;}
+.detail-body{padding:1.5rem;}
+.detail-badge{display:inline-flex;align-items:center;gap:0.4rem;background:rgba(245,197,24,0.1);border:1px solid rgba(245,197,24,0.3);color:var(--gold);font-size:0.72rem;letter-spacing:0.12em;padding:0.25rem 0.8rem;margin-bottom:0.75rem;clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);}
+.detail-title{font-family:'Noto Serif TC',serif;font-size:1.6rem;font-weight:900;color:var(--white);line-height:1.3;margin-bottom:1rem;}
+.detail-meta{display:flex;gap:1rem;align-items:center;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid rgba(245,197,24,0.15);flex-wrap:wrap;}
+.detail-author{color:var(--gold);font-size:0.85rem;font-weight:700;}
+.detail-date{font-size:0.78rem;color:rgba(255,255,255,0.35);}
+.detail-desc{font-size:0.9rem;line-height:1.8;color:rgba(255,255,255,0.6);margin-bottom:1.5rem;}
+.detail-vote-row{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.2);}
+.detail-vote-num{font-family:'Noto Serif TC',serif;font-size:2.2rem;font-weight:900;color:var(--gold);text-shadow:0 0 15px var(--shadow-gold);line-height:1;}
+.detail-vote-num small{font-family:'Noto Sans TC',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.45);margin-left:0.3rem;}
+.empty{grid-column:1/-1;text-align:center;padding:5rem 2rem;color:rgba(255,255,255,0.35);}
+.empty-icon{font-size:4rem;margin-bottom:1rem;opacity:0.5;}
+.empty h3{font-family:'Noto Serif TC',serif;font-size:1.3rem;color:rgba(255,255,255,0.55);margin-bottom:0.5rem;}
+.empty p{font-size:0.88rem;line-height:1.7;}
+
+/* SETUP BANNER */
+.setup-banner{background:linear-gradient(135deg,rgba(245,197,24,0.15),rgba(245,197,24,0.05));border:2px solid var(--gold);padding:1.5rem;margin-bottom:2rem;position:relative;z-index:1;}
+.setup-banner h3{font-family:'Noto Serif TC',serif;color:var(--gold);font-size:1.1rem;margin-bottom:0.5rem;}
+.setup-banner p{font-size:0.85rem;color:rgba(255,255,255,0.7);line-height:1.7;}
+.setup-banner code{background:rgba(0,0,0,0.5);border:1px solid rgba(245,197,24,0.3);padding:0.15rem 0.4rem;border-radius:3px;color:var(--gold-light);font-size:0.8rem;}
+
+.toast{position:fixed;bottom:2rem;right:2rem;background:linear-gradient(135deg,var(--dark),#3a0000);border:1px solid var(--gold);border-left:4px solid var(--gold);color:var(--gold);padding:0.9rem 1.3rem;font-size:0.85rem;letter-spacing:0.05em;opacity:0;transform:translateY(10px);transition:all 0.3s;z-index:300;max-width:300px;border-radius:2px;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.error{border-color:var(--red-light);color:#ff8080;border-left-color:var(--red-light);}
+.toast.info{border-color:#60a0ff;color:#a0c4ff;border-left-color:#60a0ff;}
+
+footer{text-align:center;padding:2rem;border-top:1px solid rgba(245,197,24,0.18);color:rgba(255,255,255,0.28);font-size:0.75rem;letter-spacing:0.1em;position:relative;z-index:1;background:rgba(0,0,0,0.2);}
+footer .fg{color:var(--gold);opacity:0.55;}
+
+@media(max-width:600px){
+  .grid{grid-template-columns:1fr;}
+  .hero{padding:2.5rem 1.25rem 4rem;}
+  .hero-stats{gap:1rem;}
+  .stat{padding:0.75rem 1rem;min-width:80px;}
+  .main{padding:1.25rem;}
+  .header-inner{padding:0 1rem;}
+  .logo-main{font-size:1.05rem;}
+  nav{gap:0.3rem;}
+  .nav-btn{padding:0.4rem 0.7rem;font-size:0.75rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-screen">
+  <div class="ls-shield">⚡</div>
+  <div class="ls-text">職場英雄票選</div>
+  <div class="ls-sub">連線中，請稍候...</div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-shield">⚡</div>
+      <div>
+        <div class="logo-main">職場英雄票選</div>
+        <div class="logo-sub">WORKPLACE HERO PHOTO VOTE</div>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn active" onclick="showTab('gallery')">📷 作品牆</button>
+      <button class="nav-btn" onclick="showTab('leaderboard')">🏆 英雄榜</button>
+      <button class="nav-btn primary" onclick="openUpload()">⬆ 上傳作品</button>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <span class="star-deco s1">★</span><span class="star-deco s2">★</span>
+  <span class="star-deco s3">★</span><span class="star-deco s4">★</span>
+  <span class="star-deco s5">★</span><span class="star-deco s6">★</span>
+  <div class="hero-badge">★ 致敬隱形的守護者 ★</div>
+  <h1 class="hero-title">
+    <span class="t1">職場英雄</span><br>
+    <span class="t2">勞工攝影票選活動</span>
+  </h1>
+  <p class="hero-sub">每一張照片，都是職人精神的見證</p>
+  <div class="hero-div"><span>✦</span><span>✦</span><span>✦</span></div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num" id="stat-photos">-</div><div class="stat-label">參賽作品</div></div>
+    <div class="stat"><div class="stat-num" id="stat-votes">-</div><div class="stat-label">累計票數</div></div>
+    <div class="stat"><div class="stat-num" id="stat-voters">-</div><div class="stat-label">投票人次</div></div>
+  </div>
+</div>
+
+<div class="gold-band"></div>
+
+<div class="tabs">
+  <div class="tab active" id="tab-gallery" onclick="showTab('gallery')">📷 英雄作品瀏覽</div>
+  <div class="tab" id="tab-leaderboard" onclick="showTab('leaderboard')">🏆 票選英雄榜</div>
+</div>
+
+<div class="main">
+  <div id="firebase-notice" class="setup-banner" style="display:none">
+    ⚠️ <strong>尚未完成設定</strong> — 請依照說明文件，將 Firebase 設定碼填入 <code>index.html</code> 第 600 行的 <code>firebaseConfig</code>。
+  </div>
+
+  <div id="view-gallery">
+    <div class="toolbar">
+      <div class="count-label">共 <strong id="photo-count">0</strong> 件英雄作品</div>
+      <div class="sort-group">
+        <button class="sort-btn active" onclick="setSort('newest',event)">最新上傳</button>
+        <button class="sort-btn" onclick="setSort('votes',event)">票數最高</button>
+        <button class="sort-btn" onclick="setSort('oldest',event)">最早上傳</button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="view-leaderboard" style="display:none">
+    <div class="leaderboard-wrap">
+      <div class="lb-header">
+        <div class="lb-title">★ 英雄榜 ★</div>
+        <div class="lb-sub">依票數即時排行</div>
+      </div>
+      <div id="lb-list"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fg">★ 職場英雄 | 致敬每一位在崗位上默默付出的真正超人 ★</div>
+  <div style="margin-top:0.3rem">大發・和發・鳳山・臨海產業園區廠商協進會</div>
+</footer>
+
+<!-- UPLOAD MODAL -->
+<div class="overlay" id="upload-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📷 上傳英雄作品</div>
+      <button class="close-btn" onclick="closeUpload()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
+      <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
+      <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
+      <div class="field">
+        <label>★ 上傳照片</label>
+        <div class="drop-zone" id="drop-zone">
+          <input type="file" id="f-file" accept="image/*" onchange="handleFile(this)">
+          <div class="drop-icon">📸</div>
+          <div class="drop-text">點擊選擇照片，或拖曳圖片至此<br><small style="opacity:0.5">支援 JPG、PNG（最大 5MB）</small></div>
+        </div>
+        <img class="preview-img" id="preview" alt="預覽">
+      </div>
+      <button class="submit-btn" id="submit-btn" onclick="submitPhoto()">★ 提交英雄作品 ★</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detail-overlay">
+  <div class="modal" style="max-width:660px">
+    <div class="modal-header">
+      <div class="modal-title">🏅 作品詳情</div>
+      <button class="close-btn" onclick="closeDetail()">✕</button>
+    </div>
+    <img class="detail-img" id="detail-img" src="" alt="">
+    <div class="detail-body">
+      <div class="detail-badge">★ 職場英雄作品</div>
+      <h2 class="detail-title" id="detail-title"></h2>
+      <div class="detail-meta">
+        <span class="detail-author" id="detail-author"></span>
+        <span class="detail-date" id="detail-date"></span>
+      </div>
+      <p class="detail-desc" id="detail-desc"></p>
+      <div class="detail-vote-row">
+        <div>
+          <div class="detail-vote-num" id="detail-votes">0<small>票</small></div>
+          <div style="font-size:0.68rem;color:rgba(255,255,255,0.3);margin-top:2px;letter-spacing:0.08em">當前票數</div>
+        </div>
+        <button class="vote-btn" id="detail-vote-btn" onclick="voteFromDetail()">★ 為此英雄投票</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════════
+     STEP 1：把下面 firebaseConfig 換成你的設定
+     ════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, getDoc, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// Storage 不使用，改為將圖片壓縮後直接存入 Firestore
+
+// ▼▼▼ 把這裡換成你的 Firebase 設定 ▼▼▼
+const firebaseConfig = {
+  apiKey: "AIzaSyBXEhjyAudqXXcMxkF6A2AUnWdL-Pwy-0Y",
+  authDomain: "hero-labor-vote.firebaseapp.com",
+  projectId: "hero-labor-vote",
+  storageBucket: "hero-labor-vote.firebasestorage.app",
+  messagingSenderId: "616456865543",
+  appId: "1:616456865543:web:64b8999487e2b7ceaf67a2"
+};
+// ▲▲▲ 設定到這裡結束 ▲▲▲
+
+const IS_CONFIGURED = !firebaseConfig.apiKey.includes('請填入');
+
+let app, db;
+let photos = [];
+let currentSort = 'newest';
+let detailId = null;
+let currentImgData = null;
+// 用 localStorage 記錄此裝置投過的票
+let myVotes = JSON.parse(localStorage.getItem('hero_my_votes') || '{}');
+
+function saveMyVotes(){ localStorage.setItem('hero_my_votes', JSON.stringify(myVotes)); }
+function esc(s=''){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmt(ts){ if(!ts) return ''; const d = ts.toDate ? ts.toDate() : new Date(ts); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; }
+
+function toast(msg, type='success'){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type==='error'?' error':type==='info'?' info':'');
+  setTimeout(()=>t.className='toast', 3500);
+}
+
+function hideLoading(){
+  const ls = document.getElementById('loading-screen');
+  ls.style.opacity = '0';
+  ls.style.transition = 'opacity 0.5s';
+  setTimeout(()=>ls.style.display='none', 500);
+}
+
+function updateStats(){
+  const total = photos.length;
+  const totalVotes = photos.reduce((s,p)=>s+( p.votes||0),0);
+  const uniqueVoters = photos.reduce((s,p)=>s+(p.voterCount||0),0);
+  document.getElementById('stat-photos').textContent = total;
+  document.getElementById('stat-votes').textContent = totalVotes;
+  document.getElementById('stat-voters').textContent = uniqueVoters;
+  document.getElementById('photo-count').textContent = total;
+}
+
+function sorted(){
+  const arr = [...photos];
+  if(currentSort==='votes') arr.sort((a,b)=>(b.votes||0)-(a.votes||0));
+  else if(currentSort==='oldest') arr.sort((a,b)=>{ const ta=a.createdAt?.seconds||0, tb=b.createdAt?.seconds||0; return ta-tb; });
+  else arr.sort((a,b)=>{ const ta=a.createdAt?.seconds||0, tb=b.createdAt?.seconds||0; return tb-ta; });
+  return arr;
+}
+
+window.setSort = function(s, e){
+  currentSort = s;
+  document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
+  if(e&&e.target) e.target.classList.add('active');
+  renderGallery();
+};
+
+function renderGallery(){
+  const grid = document.getElementById('grid');
+  const list = sorted();
+  if(!list.length){
+    grid.innerHTML=`<div class="empty"><div class="empty-icon">🦸</div><h3>英雄榜尚未開放</h3><p>成為第一位上傳作品的英雄！</p></div>`;
+    return;
+  }
+  const byVote = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
+  grid.innerHTML = list.map(p=>{
+    const rank = byVote.findIndex(x=>x.id===p.id);
+    const voted = myVotes[p.id];
+    let rb = '';
+    if(currentSort==='votes'){
+      const cls = rank===0?'rg':rank===1?'rs':rank===2?'rb':'ro';
+      rb = `<div class="rank-badge ${cls}">${rank+1}</div>`;
+    }
+    const img = p.imageUrl
+      ? `<img class="card-img" src="${p.imageUrl}" alt="" loading="lazy">`
+      : `<div class="card-img-ph">🖼️</div>`;
+    return `<div class="card">
+      ${rb}
+      <div class="card-img-wrap" onclick="openDetail('${p.id}')">${img}<div class="card-overlay"></div></div>
+      <div class="card-body" onclick="openDetail('${p.id}')">
+        <div class="card-title">${esc(p.title)}</div>
+        <div class="card-author">★ ${esc(p.author)} · ${fmt(p.createdAt)}</div>
+        ${p.description?`<div class="card-desc">${esc(p.description)}</div>`:''}
+      </div>
+      <div class="card-footer">
+        <div><span class="vote-count">${p.votes||0}</span><span class="vote-label">票</span></div>
+        <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')" ${voted?'disabled':''}>
+          ${voted?'✓ 已投票':'★ 投票'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderLeaderboard(){
+  const list = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
+  const lb = document.getElementById('lb-list');
+  if(!list.length){ lb.innerHTML=`<div class="empty"><div class="empty-icon">🏆</div><h3>英雄榜空空如也</h3><p>快來上傳作品並開始投票！</p></div>`; return; }
+  const maxV = list[0].votes||1;
+  lb.innerHTML = list.map((p,i)=>{
+    const pct = Math.round(((p.votes||0)/maxV)*100);
+    const tc = i===0?'t1':i===1?'t2':i===2?'t3':'';
+    const rc = i===0?'r1':i===1?'r2':i===2?'r3':'ro';
+    const icon = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    const imgEl = p.imageUrl ? `<img class="lb-thumb" src="${p.imageUrl}" alt="" loading="lazy">` : `<div class="lb-thumb-ph">🖼️</div>`;
+    return `<div class="lb-item ${tc}">
+      <div class="lb-rank ${rc}">${icon}</div>
+      ${imgEl}
+      <div class="lb-info">
+        <div class="lb-name">${esc(p.title)}</div>
+        <div class="lb-author">★ ${esc(p.author)}</div>
+        <div class="lb-bar"><div class="lb-bar-fill" style="width:${pct}%"></div></div>
+      </div>
+      <div class="lb-votes-col">
+        <div class="lb-votes-num">${p.votes||0}</div>
+        <div class="lb-votes-lbl">票</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.vote = async function(id){
+  if(myVotes[id]){ toast('你已經為這件作品投過票了','info'); return; }
+  if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
+  try {
+    const photoRef = doc(db, 'photos', id);
+    await runTransaction(db, async (tx)=>{
+      const snap = await tx.get(photoRef);
+      if(!snap.exists()) throw new Error('找不到作品');
+      tx.update(photoRef, { votes: increment(1), voterCount: increment(1) });
+    });
+    myVotes[id] = true;
+    saveMyVotes();
+    toast('★ 投票成功！感謝你為英雄發聲！');
+    // 更新 detail modal 按鈕
+    if(detailId===id){
+      const btn = document.getElementById('detail-vote-btn');
+      btn.textContent='✓ 已投票'; btn.className='vote-btn voted'; btn.disabled=true;
+    }
+  } catch(e){
+    toast('投票失敗，請再試一次','error');
+    console.error(e);
+  }
+};
+
+window.showTab = function(name){
+  document.getElementById('view-gallery').style.display = name==='gallery'?'':'none';
+  document.getElementById('view-leaderboard').style.display = name==='leaderboard'?'':'none';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn:not(.primary)').forEach(b=>b.classList.remove('active'));
+  if(name==='leaderboard') renderLeaderboard();
+};
+
+window.openUpload = function(){ document.getElementById('upload-overlay').classList.add('open'); };
+window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
+
+function resetForm(){
+  ['f-title','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
+  const p=document.getElementById('preview'); p.style.display='none'; p.src='';
+  document.getElementById('f-file').value='';
+  currentImgData=null;
+}
+
+window.handleFile = function(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(file.size > 5*1024*1024){ toast('圖片不能超過 5MB','error'); return; }
+  const r = new FileReader();
+  r.onload = e => {
+    currentImgData = e.target.result;
+    const p = document.getElementById('preview');
+    p.src = currentImgData; p.style.display = 'block';
+  };
+  r.readAsDataURL(file);
+};
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file && file.type.startsWith('image/')){
+    const input = document.getElementById('f-file');
+    const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+    window.handleFile(input);
+  }
+});
+
+// 圖片壓縮（將照片縮小後存入 Firestore）
+function compressImage(dataUrl, maxWidth, quality){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if(w > maxWidth){ h = Math.round(h * maxWidth / w); w = maxWidth; }
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  });
+}
+
+window.submitPhoto = async function(){
+  if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
+  const title = document.getElementById('f-title').value.trim();
+  const author = document.getElementById('f-author').value.trim();
+  const desc = document.getElementById('f-desc').value.trim();
+  if(!title){ toast('請填寫作品標題','error'); return; }
+  if(!author){ toast('請填寫攝影者姓名','error'); return; }
+  if(!currentImgData){ toast('請選擇一張照片','error'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '上傳中，請稍候...';
+
+  try {
+    // 壓縮圖片後直接存入 Firestore（不需要 Storage）
+    const compressed = await compressImage(currentImgData, 800, 0.7);
+
+    await addDoc(collection(db, 'photos'), {
+      title, author, description: desc,
+      imageUrl: compressed,
+      votes: 0, voterCount: 0,
+      createdAt: new Date()
+    });
+
+    closeUpload();
+    toast('★ 英雄作品上傳成功！');
+  } catch(e){
+    toast('上傳失敗，請再試一次','error');
+    console.error(e);
+  } finally {
+    btn.disabled = false; btn.textContent = '★ 提交英雄作品 ★';
+  }
+};
+
+window.openDetail = function(id){
+  const p = photos.find(x=>x.id===id); if(!p) return;
+  detailId = id;
+  const di = document.getElementById('detail-img');
+  if(p.imageUrl){ di.src=p.imageUrl; di.style.display='block'; } else di.style.display='none';
+  document.getElementById('detail-title').textContent = p.title;
+  document.getElementById('detail-author').textContent = '★ '+p.author;
+  document.getElementById('detail-date').textContent = fmt(p.createdAt);
+  document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
+  document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
+  const btn = document.getElementById('detail-vote-btn');
+  if(myVotes[id]){ btn.textContent='✓ 已投票'; btn.className='vote-btn voted'; btn.disabled=true; }
+  else { btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false; }
+  document.getElementById('detail-overlay').classList.add('open');
+};
+
+window.closeDetail = function(){ document.getElementById('detail-overlay').classList.remove('open'); };
+
+window.voteFromDetail = function(){
+  if(!detailId||myVotes[detailId]) return;
+  window.vote(detailId);
+};
+
+document.getElementById('upload-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeUpload(); });
+document.getElementById('detail-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeDetail(); });
+
+// ── INIT ──
+if(!IS_CONFIGURED){
+  document.getElementById('firebase-notice').style.display='block';
+  document.getElementById('stat-photos').textContent='?';
+  document.getElementById('stat-votes').textContent='?';
+  document.getElementById('stat-voters').textContent='?';
+  hideLoading();
+  renderGallery();
+} else {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+
+    // Real-time listener
+    const q = query(collection(db,'photos'), orderBy('createdAt','desc'));
+    onSnapshot(q, (snap)=>{
+      photos = snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderGallery();
+      renderLeaderboard();
+      updateStats();
+      hideLoading();
+    }, (err)=>{
+      console.error(err);
+      toast('資料庫連線失敗，請檢查設定','error');
+      hideLoading();
+    });
+  } catch(e){
+    console.error(e);
+    hideLoading();
+    toast('Firebase 初始化失敗','error');
+  }
+}
+</script>
+</body>
+</html>
