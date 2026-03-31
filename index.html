@@ -228,6 +228,29 @@ footer .fg{color:var(--gold);opacity:0.55;}
   </h1>
   <p class="hero-sub">每一張照片，都是職人精神的見證</p>
   <div class="hero-div"><span>✦</span><span>✦</span><span>✦</span></div>
+
+  <!-- 獎金公告 -->
+  <div style="position:relative;z-index:1;background:rgba(0,0,0,0.45);border:2px solid var(--gold);max-width:500px;margin:0 auto 2rem;padding:1.1rem 1.5rem;">
+    <div style="font-family:'Noto Serif TC',serif;font-size:0.8rem;letter-spacing:0.2em;color:var(--gold);margin-bottom:0.75rem;">📢 活動公告</div>
+    <div style="font-family:'Noto Serif TC',serif;font-size:1rem;color:var(--white);margin-bottom:0.75rem;line-height:1.6;">本次比賽提供獎金</div>
+    <div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;">
+      <div style="text-align:center;">
+        <div style="font-size:1.5rem;">🥇</div>
+        <div style="font-family:'Noto Serif TC',serif;color:var(--gold);font-size:1.1rem;font-weight:900;text-shadow:0 0 10px var(--shadow-gold);">10,000元</div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:2px;">第一名</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:1.5rem;">🥈</div>
+        <div style="font-family:'Noto Serif TC',serif;color:#e0e0e0;font-size:1.1rem;font-weight:900;">5,000元</div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:2px;">第二名</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-size:1.5rem;">🥉</div>
+        <div style="font-family:'Noto Serif TC',serif;color:#e8a87c;font-size:1.1rem;font-weight:900;">3,000元</div>
+        <div style="font-size:0.7rem;color:rgba(255,255,255,0.5);margin-top:2px;">第三名</div>
+      </div>
+    </div>
+  </div>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num" id="stat-photos">-</div><div class="stat-label">參賽作品</div></div>
     <div class="stat"><div class="stat-num" id="stat-votes">-</div><div class="stat-label">累計票數</div></div>
@@ -397,10 +420,13 @@ let photos = [];
 let currentSort = 'newest';
 let detailId = null;
 let currentImgData = null;
-// 用 localStorage 記錄此裝置投過的票
+// 用 localStorage 記錄此裝置投過的票（限整個活動只能投1票）
 let myVotes = JSON.parse(localStorage.getItem('hero_my_votes') || '{}');
+// 記錄此裝置是否已上傳過照片
+let myUploaded = localStorage.getItem('hero_my_uploaded') === 'true';
 
 function saveMyVotes(){ localStorage.setItem('hero_my_votes', JSON.stringify(myVotes)); }
+function totalVoted(){ return Object.keys(myVotes).length; }
 function esc(s=''){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt(ts){ if(!ts) return ''; const d = ts.toDate ? ts.toDate() : new Date(ts); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; }
 
@@ -513,32 +539,33 @@ function renderLeaderboard(){
 window.vote = async function(id){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
   const alreadyVoted = myVotes[id];
+  // 限制：整個活動只能投1票，除非是撤銷
+  if(!alreadyVoted && totalVoted() >= 1){
+    toast('每人只能投 1 票，請先撤銷已投的票再重新選擇','info'); return;
+  }
   try {
     const photoRef = doc(db, 'photos', id);
     await runTransaction(db, async (tx)=>{
       const snap = await tx.get(photoRef);
       if(!snap.exists()) throw new Error('找不到作品');
       if(alreadyVoted){
-        // 撤銷投票
         tx.update(photoRef, { votes: increment(-1), voterCount: increment(-1) });
       } else {
-        // 投票
         tx.update(photoRef, { votes: increment(1), voterCount: increment(1) });
       }
     });
     if(alreadyVoted){
       delete myVotes[id];
-      toast('↩ 已撤銷投票','info');
+      toast('↩ 已撤銷投票，可重新選擇其他作品','info');
     } else {
       myVotes[id] = true;
       toast('★ 投票成功！感謝你為英雄發聲！');
     }
     saveMyVotes();
-    // 更新 detail modal 按鈕
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
       if(myVotes[id]){
-        btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; 
+        btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted';
       } else {
         btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
       }
@@ -609,7 +636,10 @@ window.showTab = function(name){
   if(name==='leaderboard') renderLeaderboard();
 };
 
-window.openUpload = function(){ document.getElementById('upload-overlay').classList.add('open'); };
+window.openUpload = function(){
+  if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
+  document.getElementById('upload-overlay').classList.add('open');
+};
 window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
 
 function resetForm(){
@@ -848,6 +878,8 @@ function compressImage(dataUrl, maxWidth, quality){
 
 window.submitPhoto = async function(){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
+  // 限制每人只能上傳一張
+  if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
   const title = document.getElementById('f-title').value.trim();
   const author = document.getElementById('f-author').value.trim();
   const desc = document.getElementById('f-desc').value.trim();
@@ -895,6 +927,8 @@ window.submitPhoto = async function(){
     });
 
     closeUpload();
+    myUploaded = true;
+    localStorage.setItem('hero_my_uploaded','true');
     toast('★ 英雄作品上傳成功！');
   } catch(e){
     toast('上傳失敗，請再試一次','error');
