@@ -159,6 +159,21 @@ textarea{resize:vertical;min-height:85px;}
 .toast.error{border-color:var(--red-light);color:#ff8080;border-left-color:var(--red-light);}
 .toast.info{border-color:#60a0ff;color:#a0c4ff;border-left-color:#60a0ff;}
 
+/* ADMIN */
+.admin-bar{display:none;background:rgba(0,0,0,0.5);border:1px solid rgba(255,80,80,0.4);border-left:3px solid #ff5050;padding:0.5rem 1rem;margin-bottom:1rem;font-size:0.78rem;color:#ff9090;letter-spacing:0.05em;align-items:center;justify-content:space-between;}
+.admin-bar.show{display:flex;}
+.admin-bar span{display:flex;align-items:center;gap:0.4rem;}
+.admin-logout{background:none;border:1px solid rgba(255,80,80,0.4);color:#ff9090;padding:0.25rem 0.7rem;cursor:pointer;font-size:0.72rem;border-radius:2px;transition:all 0.2s;}
+.admin-logout:hover{background:rgba(255,80,80,0.15);}
+.delete-btn{display:none;padding:0.4rem 0.8rem;background:rgba(180,0,0,0.7);border:1px solid rgba(255,80,80,0.4);color:#ff9090;cursor:pointer;font-size:0.75rem;font-family:'Noto Sans TC',sans-serif;border-radius:2px;transition:all 0.2s;white-space:nowrap;}
+.delete-btn:hover{background:rgba(220,0,0,0.8);color:white;}
+.admin-mode .delete-btn{display:block;}
+.admin-pw-form{display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;}
+.admin-pw-input{flex:1;padding:0.55rem 0.8rem;background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.25);color:white;font-size:0.85rem;border-radius:2px;outline:none;}
+.admin-pw-input:focus{border-color:var(--gold);}
+.admin-login-btn{padding:0.55rem 1rem;background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:var(--dark);border:none;font-weight:700;font-size:0.82rem;cursor:pointer;border-radius:2px;white-space:nowrap;}
+.admin-login-btn:hover{background:linear-gradient(135deg,var(--gold-light),var(--gold));}
+
 footer{text-align:center;padding:2rem;border-top:1px solid rgba(245,197,24,0.18);color:rgba(255,255,255,0.28);font-size:0.75rem;letter-spacing:0.1em;position:relative;z-index:1;background:rgba(0,0,0,0.2);}
 footer .fg{color:var(--gold);opacity:0.55;}
 
@@ -197,6 +212,7 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <button class="nav-btn active" onclick="showTab('gallery')">📷 作品牆</button>
       <button class="nav-btn" onclick="showTab('leaderboard')">🏆 英雄榜</button>
       <button class="nav-btn primary" onclick="openUpload()">⬆ 上傳作品</button>
+      <button class="nav-btn" onclick="openAdminLogin()" id="admin-nav-btn">🔐 管理</button>
     </nav>
   </div>
 </header>
@@ -227,6 +243,10 @@ footer .fg{color:var(--gold);opacity:0.55;}
 </div>
 
 <div class="main">
+  <div id="admin-bar" class="admin-bar">
+    <span>🔐 管理員模式已啟用 — 可刪除任何作品</span>
+    <button class="admin-logout" onclick="adminLogout()">登出管理</button>
+  </div>
   <div id="firebase-notice" class="setup-banner" style="display:none">
     ⚠️ <strong>尚未完成設定</strong> — 請依照說明文件，將 Firebase 設定碼填入 <code>index.html</code> 第 600 行的 <code>firebaseConfig</code>。
   </div>
@@ -311,6 +331,25 @@ footer .fg{color:var(--gold);opacity:0.55;}
   </div>
 </div>
 
+<!-- ADMIN LOGIN MODAL -->
+<div class="overlay" id="admin-overlay">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div class="modal-title">🔐 管理員登入</div>
+      <button class="close-btn" onclick="closeAdminLogin()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field">
+        <label>★ 管理員密碼</label>
+        <input type="password" id="admin-pw" placeholder="請輸入管理員密碼" onkeydown="if(event.key==='Enter') doAdminLogin()">
+      </div>
+      <div class="admin-pw-form">
+        <button class="admin-login-btn" onclick="doAdminLogin()" style="width:100%;padding:0.8rem;clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%)">★ 登入管理模式</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- ════════════════════════════════════════
@@ -333,6 +372,8 @@ const firebaseConfig = {
 // ▲▲▲ 設定到這裡結束 ▲▲▲
 
 const IS_CONFIGURED = !firebaseConfig.apiKey.includes('請填入');
+const ADMIN_PASSWORD = 'hero2026';
+let isAdmin = false;
 
 let app, db;
 let photos = [];
@@ -414,9 +455,12 @@ function renderGallery(){
       </div>
       <div class="card-footer">
         <div><span class="vote-count">${p.votes||0}</span><span class="vote-label">票</span></div>
-        <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')" ${voted?'disabled':''}>
-          ${voted?'✓ 已投票':'★ 投票'}
-        </button>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button class="delete-btn" onclick="deletePhoto(event,'${p.id}')">🗑 刪除</button>
+          <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')" ${voted?'disabled':''}>
+            ${voted?'✓ 已投票':'★ 投票'}
+          </button>
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -470,6 +514,55 @@ window.vote = async function(id){
   } catch(e){
     toast('投票失敗，請再試一次','error');
     console.error(e);
+  }
+};
+
+// ── ADMIN ──
+window.openAdminLogin = function(){
+  if(isAdmin){ adminLogout(); return; }
+  document.getElementById('admin-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('admin-pw').focus(), 300);
+};
+window.closeAdminLogin = function(){
+  document.getElementById('admin-overlay').classList.remove('open');
+  document.getElementById('admin-pw').value='';
+};
+window.doAdminLogin = function(){
+  const pw = document.getElementById('admin-pw').value;
+  if(pw === ADMIN_PASSWORD){
+    isAdmin = true;
+    document.body.classList.add('admin-mode');
+    document.getElementById('admin-bar').classList.add('show');
+    document.getElementById('admin-nav-btn').textContent = '🔓 管理中';
+    document.getElementById('admin-nav-btn').style.borderColor = '#ff5050';
+    document.getElementById('admin-nav-btn').style.color = '#ff9090';
+    closeAdminLogin();
+    toast('🔐 管理員模式已啟用');
+  } else {
+    toast('密碼錯誤，請再試一次','error');
+    document.getElementById('admin-pw').value='';
+  }
+};
+window.adminLogout = function(){
+  isAdmin = false;
+  document.body.classList.remove('admin-mode');
+  document.getElementById('admin-bar').classList.remove('show');
+  document.getElementById('admin-nav-btn').textContent = '🔐 管理';
+  document.getElementById('admin-nav-btn').style.borderColor = '';
+  document.getElementById('admin-nav-btn').style.color = '';
+  toast('已登出管理員模式','info');
+};
+window.deletePhoto = async function(e, id){
+  e.stopPropagation();
+  if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
+  if(!confirm('確定要刪除這件作品嗎？此動作無法復原！')) return;
+  try {
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(doc(db,'photos',id));
+    toast('✓ 作品已刪除');
+  } catch(err){
+    toast('刪除失敗，請再試一次','error');
+    console.error(err);
   }
 };
 
@@ -593,6 +686,7 @@ window.voteFromDetail = function(){
 
 document.getElementById('upload-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeUpload(); });
 document.getElementById('detail-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeDetail(); });
+document.getElementById('admin-overlay').addEventListener('click',e=>{ if(e.target===e.currentTarget) window.closeAdminLogin(); });
 
 // ── INIT ──
 if(!IS_CONFIGURED){
