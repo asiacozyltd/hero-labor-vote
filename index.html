@@ -655,7 +655,7 @@ function initCrop(dataUrl){
     cropBox = {x:0,y:0,w:canvas.width,h:canvas.height};
     drawCrop();
     updateCropPreview();
-    currentImgData = null; // will be set on submit
+    currentImgData = dataUrl; // 保留原始圖片資料
   };
   cropImg.src = dataUrl;
 }
@@ -853,16 +853,18 @@ window.submitPhoto = async function(){
   const desc = document.getElementById('f-desc').value.trim();
   if(!title){ toast('請填寫作品標題','error'); return; }
   if(!author){ toast('請填寫攝影者姓名','error'); return; }
-  if(!currentImgData){ toast('請選擇一張照片','error'); return; }
+
+  // 判斷是否有照片（裁切模式或一般模式）
+  const cropVisible = document.getElementById('crop-area').style.display !== 'none';
+  const hasImage = cropVisible ? (cropImg && cropImg.src && cropImg.complete) : !!currentImgData;
+  if(!hasImage){ toast('請選擇一張照片','error'); return; }
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = '上傳中，請稍候...';
 
   try {
     // 取得裁切後圖片
-    const imgData = document.getElementById('crop-area').style.display !== 'none'
-      ? getCroppedDataUrl()
-      : currentImgData;
+    const imgData = cropVisible ? getCroppedDataUrl() : currentImgData;
     if(!imgData){ toast('請選擇一張照片','error'); btn.disabled=false; btn.textContent='★ 提交英雄作品 ★'; return; }
 
     const compressed = await compressImage(imgData, 1200, 0.85);
