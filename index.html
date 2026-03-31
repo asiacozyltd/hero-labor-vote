@@ -856,15 +856,33 @@ window.submitPhoto = async function(){
 
   // 判斷是否有照片（裁切模式或一般模式）
   const cropVisible = document.getElementById('crop-area').style.display !== 'none';
-  const hasImage = cropVisible ? (cropImg && cropImg.src && cropImg.complete) : !!currentImgData;
+  const hasImage = cropVisible ? (cropImg && cropImg.src && cropImg.complete && cropImg.naturalWidth > 0) : !!currentImgData;
   if(!hasImage){ toast('請選擇一張照片','error'); return; }
 
   const btn = document.getElementById('submit-btn');
   btn.disabled = true; btn.textContent = '上傳中，請稍候...';
 
   try {
-    // 取得裁切後圖片
-    const imgData = cropVisible ? getCroppedDataUrl() : currentImgData;
+    // 取得圖片 — 優先用裁切預覽，否則用原圖
+    let imgData = null;
+    const cropVisible = document.getElementById('crop-area').style.display !== 'none';
+    if(cropVisible){
+      // 直接從 cropImg 重新產生裁切結果（最可靠）
+      try {
+        const out = document.createElement('canvas');
+        const sw = Math.round(cropBox.w / canvasScale);
+        const sh = Math.round(cropBox.h / canvasScale);
+        const sx = Math.round(cropBox.x / canvasScale);
+        const sy = Math.round(cropBox.y / canvasScale);
+        let tw = sw, th = sh;
+        if(tw > 1200){ th = Math.round(th * 1200 / tw); tw = 1200; }
+        out.width = tw; out.height = th;
+        out.getContext('2d').drawImage(cropImg, sx, sy, sw, sh, 0, 0, tw, th);
+        imgData = out.toDataURL('image/jpeg', 0.85);
+      } catch(ce){ imgData = currentImgData; }
+    } else {
+      imgData = currentImgData;
+    }
     if(!imgData){ toast('請選擇一張照片','error'); btn.disabled=false; btn.textContent='★ 提交英雄作品 ★'; return; }
 
     const compressed = await compressImage(imgData, 1200, 0.85);
