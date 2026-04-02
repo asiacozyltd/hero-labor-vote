@@ -611,11 +611,12 @@ async function loadPage(page){
   } catch(e){
     console.error(e);
     toast('載入失敗，請重新整理','error');
+  } finally {
+    isLoadingPage = false;
+    hideLoading();
+    renderGallery();
+    renderPagination();
   }
-
-  isLoadingPage = false;
-  renderGallery();
-  renderPagination();
 }
 
 window.setSort = function(s, e){
@@ -1446,7 +1447,6 @@ if(!IS_CONFIGURED){
     } catch(e){ console.error(e); }
 
     await loadPage(1);
-    hideLoading();
   } catch(e){
     console.error(e);
     hideLoading();
