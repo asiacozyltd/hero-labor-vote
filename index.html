@@ -361,15 +361,45 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <div class="modal-title">🏅 作品詳情</div>
       <button class="close-btn" onclick="closeDetail()">✕</button>
     </div>
+    
     <img class="detail-img" id="detail-img" src="" alt="">
-    <div class="detail-body">
-      <div class="detail-badge">★ 職場英雄作品</div>
-      <h2 class="detail-title" id="detail-title"></h2>
-      <div class="detail-meta">
-        <span class="detail-author" id="detail-author"></span>
-        <span class="detail-date" id="detail-date"></span>
+    
+    <div class="detail-body" style="text-align: left;">
+      <div class="detail-badge" style="display: inline-block;">★ 職場英雄作品</div>
+      
+      <div class="detail-info-container" style="width: 100%; display: flex; flex-direction: column; align-items: flex-start; margin: 15px 0;">
+        
+        <h2 class="detail-title" style="margin-bottom: 15px; display: flex; align-items: baseline; text-align: left;">
+          <span style="color: #f39c12; font-size: 0.65em; margin-right: 8px; white-space: nowrap;">★ 作品標題：</span>
+          <span id="detail-title"></span>
+        </h2>
+
+        <div class="detail-meta" style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; font-size: 0.95rem; width: 100%; text-align: left;">
+          <div>
+            <span style="color: #f39c12; margin-right: 5px;">★ 協進會名稱：</span>
+            <span id="detail-association"></span>
+          </div>
+          <div>
+            <span style="color: #f39c12; margin-right: 5px;">★ 公司名稱：</span>
+            <span id="detail-company"></span>
+          </div>
+          <div>
+            <span style="color: #f39c12; margin-right: 5px;">★ 攝影者姓名：</span>
+            <span class="detail-author" id="detail-author"></span>
+          </div>
+          <div>
+            <span style="color: #f39c12; margin-right: 5px;">★ 上傳日期：</span>
+            <span class="detail-date" id="detail-date"></span>
+          </div>
+        </div>
+
+        <div class="detail-desc-section" style="width: 100%; text-align: left;">
+          <div style="color: #f39c12; margin-bottom: 8px; font-size: 0.95rem;">★ 作品介紹：</div>
+          <p class="detail-desc" id="detail-desc" style="margin-top: 0; line-height: 1.6; text-align: left;"></p>
+        </div>
+
       </div>
-      <p class="detail-desc" id="detail-desc"></p>
+
       <div class="detail-vote-row">
         <div>
           <div class="detail-vote-num" id="detail-votes">0<small>票</small></div>
@@ -433,7 +463,7 @@ let currentImgData = null;
 // 用 localStorage 記錄此裝置投過的票（限整個活動只能投1票）
 let myVotes = JSON.parse(localStorage.getItem('hero_my_votes') || '{}');
 // 記錄此裝置是否已上傳過照片
-let myUploaded = localStorage.getItem('hero_my_uploaded') === 'true';
+let myUploaded = localStorage.getItem('hero_my_uploaded') === 'true';  //true
 
 function saveMyVotes(){ localStorage.setItem('hero_my_votes', JSON.stringify(myVotes)); }
 function totalVoted(){ return Object.keys(myVotes).length; }
@@ -654,6 +684,7 @@ window.openUpload = function(){
 window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
 
 function resetForm(){
+  // 把 f-association 和 f-company 加進來清空陣列裡
   ['f-title', 'f-association', 'f-company', 'f-author', 'f-desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-file').value='';
   document.getElementById('drop-zone').style.display='block';
