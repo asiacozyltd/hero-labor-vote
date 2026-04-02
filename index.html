@@ -262,6 +262,12 @@ footer .fg{color:var(--gold);opacity:0.55;}
         <span style="color:var(--gold);">★</span> 每人限投 <strong style="color:var(--gold);">1</strong> 票
       </div>
     </div>
+    <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid rgba(245,197,24,0.15);text-align:center;">
+      <div id="deadline-banner" style="font-size:0.82rem;color:rgba(255,255,255,0.7);">
+        ⏰ 投票截止：<strong style="color:var(--gold);">2026年4月24日 19:00</strong>
+      </div>
+      <div id="countdown-timer" style="font-family:'Noto Serif TC',serif;font-size:1rem;color:var(--gold);margin-top:0.3rem;letter-spacing:0.05em;"></div>
+    </div>
   </div>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num" id="stat-photos">-</div><div class="stat-label">參賽作品</div></div>
@@ -436,6 +442,14 @@ let currentImgData = null;
 let myVotedPhotoId = null;   // 此帳號已投給哪張
 let myUploaded = false;       // 此帳號是否已上傳
 
+// 投票截止時間：2026年4月24日 19:00 台北時間 (GMT+8)
+const VOTE_DEADLINE = new Date('2026-04-24T19:00:00+08:00');
+function isVotingOpen(){ return new Date() < VOTE_DEADLINE; }
+function deadlineText(){
+  const d = VOTE_DEADLINE;
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日 19:00`;
+}
+
 async function loadUserState(uid){
   try {
     const userRef = doc(db, 'users', uid);
@@ -533,9 +547,12 @@ function renderGallery(){
         <div><span class="vote-count">${p.votes||0}</span><span class="vote-label">票</span></div>
         <div style="display:flex;gap:0.5rem;align-items:center;">
           <button class="delete-btn" onclick="deletePhoto(event,'${p.id}')">🗑 刪除</button>
-          <button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')">
-            ${voted?'✓ 已投票 ↩':'★ 投票'}
-          </button>
+          ${isVotingOpen()
+            ? `<button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')">
+                ${voted?'✓ 已投票 ↩':'★ 投票'}
+               </button>`
+            : `<button class="vote-btn" disabled style="opacity:0.4;clip-path:none;cursor:not-allowed;">⏰ 已截止</button>`
+          }
         </div>
       </div>
     </div>`;
@@ -572,6 +589,7 @@ function renderLeaderboard(){
 window.vote = async function(id){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
   if(!currentUser){ toast('請先登入 Google 帳號才能投票','error'); return; }
+  if(!isVotingOpen()){ toast(`⏰ 投票已於 ${deadlineText()} 截止，感謝參與！`,'error'); return; }
   const alreadyVoted = myVotedPhotoId === id;
   if(!alreadyVoted && myVotedPhotoId !== null){
     toast('每人只能投 1 票，請先撤銷已投的票再重新選擇','info'); return;
@@ -612,6 +630,31 @@ window.vote = async function(id){
     console.error(e);
   }
 };
+
+function updateCountdown(){
+  const now = new Date();
+  const diff = VOTE_DEADLINE - now;
+  const el = document.getElementById('countdown-timer');
+  if(!el) return;
+  if(diff <= 0){
+    el.textContent = '🔒 投票已截止';
+    el.style.color = 'rgba(255,255,255,0.4)';
+    renderGallery(); // 重新渲染讓按鈕變灰
+    return;
+  }
+  const days = Math.floor(diff / (1000*60*60*24));
+  const hrs  = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+  const mins = Math.floor((diff % (1000*60*60)) / (1000*60));
+  const secs = Math.floor((diff % (1000*60)) / 1000);
+  if(days > 0){
+    el.textContent = `距截止還有 ${days} 天 ${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  } else {
+    el.textContent = `距截止還有 ${String(hrs).padStart(2,'0')}:${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+    if(diff < 3600000) el.style.color = '#ff8080'; // 不足1小時變紅
+  }
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
 
 // ── GOOGLE AUTH ──
 window.googleLogin = async function(){
@@ -1016,10 +1059,12 @@ window.openDetail = function(id){
   document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
   document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
   const btn = document.getElementById('detail-vote-btn');
-  if(myVotedPhotoId===id){
-    btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; btn.disabled=false;
+  if(!isVotingOpen()){
+    btn.textContent=`⏰ 投票已截止`; btn.className='vote-btn'; btn.disabled=true; btn.style.opacity='0.4'; btn.style.clipPath='none';
+  } else if(myVotedPhotoId===id){
+    btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; btn.disabled=false; btn.style.opacity=''; btn.style.clipPath='';
   } else {
-    btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
+    btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false; btn.style.opacity=''; btn.style.clipPath='';
   }
   document.getElementById('detail-overlay').classList.add('open');
 };
