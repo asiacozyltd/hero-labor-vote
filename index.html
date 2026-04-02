@@ -286,7 +286,10 @@ footer .fg{color:var(--gold);opacity:0.55;}
 <div class="main">
   <div id="admin-bar" class="admin-bar">
     <span>🔐 管理員模式已啟用 — 可刪除任何作品</span>
-    <button class="admin-logout" onclick="adminLogout()">登出管理</button>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button class="admin-logout" onclick="exportExcel()" style="border-color:rgba(100,200,100,0.5);color:#90ee90;">📊 匯出Excel</button>
+      <button class="admin-logout" onclick="adminLogout()">登出管理</button>
+    </div>
   </div>
   <div id="firebase-notice" class="setup-banner" style="display:none">
     ⚠️ <strong>尚未完成設定</strong> — 請依照說明文件，將 Firebase 設定碼填入 <code>index.html</code> 第 600 行的 <code>firebaseConfig</code>。
@@ -722,6 +725,48 @@ window.doAdminLogin = function(){
     document.getElementById('admin-pw').value='';
   }
 };
+window.exportExcel = function(){
+  if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
+  if(!photos.length){ toast('目前沒有任何作品','error'); return; }
+
+  // 依票數排序
+  const sorted = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
+
+  // 建立 CSV 內容（Excel 可直接開啟）
+  const BOM = '\uFEFF'; // UTF-8 BOM，確保 Excel 正確顯示中文
+  const headers = ['名次','作品標題','協進會名稱','公司名稱','攝影者姓名','得票數','上傳日期'];
+
+  const rows = sorted.map((p, i) => {
+    const date = p.createdAt
+      ? (p.createdAt.toDate ? p.createdAt.toDate() : new Date(p.createdAt))
+      : new Date();
+    const dateStr = `${date.getFullYear()}/${String(date.getMonth()+1).padStart(2,'0')}/${String(date.getDate()).padStart(2,'0')}`;
+    return [
+      i + 1,
+      p.title || '',
+      p.association || '',
+      p.company || '',
+      p.author || '',
+      p.votes || 0,
+      dateStr
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+
+  const csv = BOM + headers.map(h=>`"${h}"`).join(',') + '\n' + rows.join('\n');
+
+  // 下載
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const filename = `職場英雄票選結果_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}.csv`;
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`✅ 已匯出 ${sorted.length} 筆資料`);
+};
+
 window.adminLogout = function(){
   isAdmin = false;
   document.body.classList.remove('admin-mode');
