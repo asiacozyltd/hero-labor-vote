@@ -296,6 +296,8 @@ footer .fg{color:var(--gold);opacity:0.55;}
     <span>🔐 管理員模式已啟用 — 可刪除任何作品</span>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
       <button class="admin-logout" onclick="exportExcel()" style="border-color:rgba(100,200,100,0.5);color:#90ee90;">📊 匯出Excel</button>
+      <button class="admin-logout" onclick="addTestData()" style="border-color:rgba(100,150,255,0.5);color:#99bbff;" id="test-data-btn">🧪 新增100筆測試</button>
+      <button class="admin-logout" onclick="clearTestData()" style="border-color:rgba(255,150,50,0.5);color:#ffbb77;" id="clear-test-btn">🗑 清除測試資料</button>
       <button class="admin-logout" onclick="adminLogout()">登出管理</button>
     </div>
   </div>
@@ -901,6 +903,82 @@ window.doAdminLogin = function(){
     document.getElementById('admin-pw').value='';
   }
 };
+window.addTestData = async function(){
+  if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
+  if(!confirm('確定要新增100筆測試資料嗎？')) return;
+
+  const btn = document.getElementById('test-data-btn');
+  btn.textContent = '⏳ 新增中...'; btn.disabled = true;
+
+  const associations = ['大發','和發','鳳山','臨海'];
+  const companies = ['台積電','鴻海','聯發科','台達電','廣達','仁寶','緯創','英業達','和碩','神達'];
+  const titles = ['晨光中的工人','機械之美','焊花四射','深夜的堅守','汗水與驕傲','鋼鐵英雄','精密的雙手','流水線上的詩','電路板的旋律','無名的守護者'];
+  const authors = ['王大明','李小華','陳建志','張美玲','林俊賢','黃淑芬','吳志遠','劉佳琪','周文輝','鄭雅婷'];
+
+  try {
+    const batch = [];
+    for(let i=1; i<=100; i++){
+      batch.push(addDoc(collection(db,'photos'), {
+        title: `${titles[i%10]}${i}`,
+        author: authors[i%10],
+        association: associations[i%4],
+        company: companies[i%10],
+        description: `這是第${i}件測試作品，紀錄了職場英雄的故事。`,
+        imageUrl: '', // 測試資料不含圖片
+        votes: Math.floor(Math.random()*50),
+        voterCount: Math.floor(Math.random()*50),
+        isTestData: true, // 標記為測試資料，方便之後清除
+        createdAt: new Date(Date.now() - Math.random()*7*24*60*60*1000) // 隨機7天內
+      }));
+      // 每10筆等一下，避免超出寫入限制
+      if(i % 10 === 0){
+        await Promise.all(batch.splice(0,10));
+        btn.textContent = `⏳ 新增中 ${i}/100...`;
+      }
+    }
+    if(batch.length) await Promise.all(batch);
+
+    // 更新總數並重新載入
+    const countSnap = await getCountFromServer(collection(db,'photos'));
+    totalPhotoCount = countSnap.data().count;
+    currentPage = 1;
+    pageFirstDocs = {};
+    await loadPage(1);
+    toast(`✅ 已新增100筆測試資料，目前共 ${totalPhotoCount} 件作品`);
+  } catch(e){
+    toast('新增失敗：'+e.message,'error');
+    console.error(e);
+  }
+  btn.textContent = '🧪 新增100筆測試'; btn.disabled = false;
+};
+
+window.clearTestData = async function(){
+  if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
+  if(!confirm('確定要清除所有測試資料嗎？（isTestData=true 的資料）')) return;
+
+  const btn = document.getElementById('clear-test-btn');
+  btn.textContent = '⏳ 清除中...'; btn.disabled = true;
+
+  try {
+    const { deleteDoc: delDoc, query: q2, where: wh, getDocs: gd } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const testQ = query(collection(db,'photos'), where('isTestData','==',true));
+    const snap = await getDocs(testQ);
+    const deletes = snap.docs.map(d => deleteDoc(doc(db,'photos',d.id)));
+    await Promise.all(deletes);
+
+    const countSnap = await getCountFromServer(collection(db,'photos'));
+    totalPhotoCount = countSnap.data().count;
+    currentPage = 1;
+    pageFirstDocs = {};
+    await loadPage(1);
+    toast(`✅ 已清除 ${snap.size} 筆測試資料，剩餘 ${totalPhotoCount} 件作品`);
+  } catch(e){
+    toast('清除失敗：'+e.message,'error');
+    console.error(e);
+  }
+  btn.textContent = '🗑 清除測試資料'; btn.disabled = false;
+};
+
 window.exportExcel = function(){
   if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
   if(!photos.length){ toast('目前沒有任何作品','error'); return; }
