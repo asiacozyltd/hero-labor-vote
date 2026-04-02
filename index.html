@@ -213,6 +213,10 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <button class="nav-btn" onclick="showTab('leaderboard')">🏆 英雄榜</button>
       <button class="nav-btn primary" onclick="openUpload()">⬆ 上傳作品</button>
       <button class="nav-btn" onclick="openAdminLogin()" id="admin-nav-btn">🔐 管理</button>
+      <button class="nav-btn" id="google-login-btn" onclick="googleLogin()" style="display:flex;align-items:center;gap:0.4rem;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:16px;height:16px;">
+        登入
+      </button>
     </nav>
   </div>
 </header>
@@ -318,11 +322,9 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <button class="close-btn" onclick="closeUpload()">✕</button>
     </div>
     <div class="modal-body">
-        <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
-        <div class="field"><label>★ 協進會名稱</label><input type="text" id="f-association" placeholder="大發、和發、鳳山、臨海，請擇一填寫"></div>
-        <div class="field"><label>★ 公司名稱</label><input type="text" id="f-company" placeholder="貴公司寶號"></div>
-        <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
-        <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
+      <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
+      <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
+      <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
       <div class="field">
         <label>★ 上傳照片</label>
         <div class="drop-zone" id="drop-zone">
@@ -361,45 +363,15 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <div class="modal-title">🏅 作品詳情</div>
       <button class="close-btn" onclick="closeDetail()">✕</button>
     </div>
-    
     <img class="detail-img" id="detail-img" src="" alt="">
-    
-    <div class="detail-body" style="text-align: left;">
-      <div class="detail-badge" style="display: inline-block;">★ 職場英雄作品</div>
-      
-      <div class="detail-info-container" style="width: 100%; display: flex; flex-direction: column; align-items: flex-start; margin: 15px 0;">
-        
-        <h2 class="detail-title" style="margin-bottom: 15px; display: flex; align-items: baseline; text-align: left;">
-          <span style="color: #f39c12; font-size: 0.65em; margin-right: 8px; white-space: nowrap;">★ 作品標題：</span>
-          <span id="detail-title"></span>
-        </h2>
-
-        <div class="detail-meta" style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 20px; font-size: 0.95rem; width: 100%; text-align: left;">
-          <div>
-            <span style="color: #f39c12; margin-right: 5px;">★ 協進會名稱：</span>
-            <span id="detail-association"></span>
-          </div>
-          <div>
-            <span style="color: #f39c12; margin-right: 5px;">★ 公司名稱：</span>
-            <span id="detail-company"></span>
-          </div>
-          <div>
-            <span style="color: #f39c12; margin-right: 5px;">★ 攝影者姓名：</span>
-            <span class="detail-author" id="detail-author"></span>
-          </div>
-          <div>
-            <span style="color: #f39c12; margin-right: 5px;">★ 上傳日期：</span>
-            <span class="detail-date" id="detail-date"></span>
-          </div>
-        </div>
-
-        <div class="detail-desc-section" style="width: 100%; text-align: left;">
-          <div style="color: #f39c12; margin-bottom: 8px; font-size: 0.95rem;">★ 作品介紹：</div>
-          <p class="detail-desc" id="detail-desc" style="margin-top: 0; line-height: 1.6; text-align: left;"></p>
-        </div>
-
+    <div class="detail-body">
+      <div class="detail-badge">★ 職場英雄作品</div>
+      <h2 class="detail-title" id="detail-title"></h2>
+      <div class="detail-meta">
+        <span class="detail-author" id="detail-author"></span>
+        <span class="detail-date" id="detail-date"></span>
       </div>
-
+      <p class="detail-desc" id="detail-desc"></p>
       <div class="detail-vote-row">
         <div>
           <div class="detail-vote-num" id="detail-votes">0<small>票</small></div>
@@ -437,8 +409,8 @@ footer .fg{color:var(--gold);opacity:0.55;}
      ════════════════════════════════════════ -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, getDoc, setDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-// Storage 不使用，改為將圖片壓縮後直接存入 Firestore
+import { getFirestore, collection, addDoc, onSnapshot, doc, runTransaction, query, orderBy, getDoc, setDoc, increment, getDocs, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ▼▼▼ 把這裡換成你的 Firebase 設定 ▼▼▼
 const firebaseConfig = {
@@ -454,19 +426,40 @@ const firebaseConfig = {
 const IS_CONFIGURED = !firebaseConfig.apiKey.includes('請填入');
 const ADMIN_PASSWORD = 'hero2026';
 let isAdmin = false;
-
-let app, db;
+let currentUser = null; // Google 登入的使用者
+let app, db, auth;
 let photos = [];
 let currentSort = 'newest';
 let detailId = null;
 let currentImgData = null;
-// 用 localStorage 記錄此裝置投過的票（限整個活動只能投1票）
-let myVotes = JSON.parse(localStorage.getItem('hero_my_votes') || '{}');
-// 記錄此裝置是否已上傳過照片
-let myUploaded = localStorage.getItem('hero_my_uploaded') === 'true';  //true
+// 用 Firestore 記錄登入用戶的投票與上傳狀態
+let myVotedPhotoId = null;   // 此帳號已投給哪張
+let myUploaded = false;       // 此帳號是否已上傳
 
-function saveMyVotes(){ localStorage.setItem('hero_my_votes', JSON.stringify(myVotes)); }
-function totalVoted(){ return Object.keys(myVotes).length; }
+async function loadUserState(uid){
+  try {
+    const userRef = doc(db, 'users', uid);
+    const snap = await getDoc(userRef);
+    if(snap.exists()){
+      myVotedPhotoId = snap.data().votedPhotoId || null;
+      myUploaded = snap.data().uploaded || false;
+    } else {
+      myVotedPhotoId = null; myUploaded = false;
+    }
+  } catch(e){ console.error(e); }
+}
+
+async function saveUserVote(uid, photoId){
+  await setDoc(doc(db,'users',uid), { votedPhotoId: photoId }, { merge: true });
+}
+async function clearUserVote(uid){
+  await setDoc(doc(db,'users',uid), { votedPhotoId: null }, { merge: true });
+}
+async function saveUserUploaded(uid){
+  await setDoc(doc(db,'users',uid), { uploaded: true }, { merge: true });
+}
+function totalVoted(){ return myVotedPhotoId ? 1 : 0; }
+function myVotes(){ return myVotedPhotoId ? {[myVotedPhotoId]: true} : {}; }
 function esc(s=''){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmt(ts){ if(!ts) return ''; const d = ts.toDate ? ts.toDate() : new Date(ts); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; }
 
@@ -519,7 +512,7 @@ function renderGallery(){
   const byVote = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
   grid.innerHTML = list.map(p=>{
     const rank = byVote.findIndex(x=>x.id===p.id);
-    const voted = myVotes[p.id];
+    const voted = myVotedPhotoId === p.id;
     let rb = '';
     if(currentSort==='votes'){
       const cls = rank===0?'rg':rank===1?'rs':rank===2?'rb':'ro';
@@ -578,9 +571,9 @@ function renderLeaderboard(){
 
 window.vote = async function(id){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
-  const alreadyVoted = myVotes[id];
-  // 限制：整個活動只能投1票，除非是撤銷
-  if(!alreadyVoted && totalVoted() >= 1){
+  if(!currentUser){ toast('請先登入 Google 帳號才能投票','error'); return; }
+  const alreadyVoted = myVotedPhotoId === id;
+  if(!alreadyVoted && myVotedPhotoId !== null){
     toast('每人只能投 1 票，請先撤銷已投的票再重新選擇','info'); return;
   }
   try {
@@ -595,17 +588,18 @@ window.vote = async function(id){
       }
     });
     if(alreadyVoted){
-      delete myVotes[id];
-      saveMyVotes();
+      myVotedPhotoId = null;
+      await clearUserVote(currentUser.uid);
       toast('↩ 已撤銷投票，可重新選擇其他作品','info');
     } else {
-      myVotes[id] = true;
-      saveMyVotes();
+      myVotedPhotoId = id;
+      await saveUserVote(currentUser.uid, id);
       toast('★ 投票成功！感謝你為英雄發聲！');
     }
+    renderGallery();
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
-      if(myVotes[id]){
+      if(myVotedPhotoId===id){
         btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted';
       } else {
         btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
@@ -618,6 +612,37 @@ window.vote = async function(id){
     console.error(e);
   }
 };
+
+// ── GOOGLE AUTH ──
+window.googleLogin = async function(){
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e){
+    if(e.code !== 'auth/popup-closed-by-user')
+      toast('登入失敗，請再試一次','error');
+  }
+};
+
+window.googleLogout = async function(){
+  await signOut(auth);
+  toast('已登出','info');
+};
+
+function updateAuthUI(user){
+  const btn = document.getElementById('google-login-btn');
+  if(user){
+    btn.innerHTML = `<img src="${user.photoURL||'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg'}" style="width:20px;height:20px;border-radius:50%;"> ${user.displayName?.split(' ')[0]||'已登入'} ▾`;
+    btn.onclick = window.googleLogout;
+    btn.style.borderColor = 'rgba(245,197,24,0.6)';
+    btn.style.color = 'var(--gold)';
+  } else {
+    btn.innerHTML = `<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:16px;height:16px;"> 登入`;
+    btn.onclick = window.googleLogin;
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  }
+}
 
 // ── ADMIN ──
 window.openAdminLogin = function(){
@@ -678,14 +703,14 @@ window.showTab = function(name){
 };
 
 window.openUpload = function(){
+  if(!currentUser){ toast('請先登入 Google 帳號才能上傳作品','error'); return; }
   if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
   document.getElementById('upload-overlay').classList.add('open');
 };
 window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
 
 function resetForm(){
-  // 把 f-association 和 f-company 加進來清空陣列裡
-  ['f-title', 'f-association', 'f-company', 'f-author', 'f-desc'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-file').value='';
   document.getElementById('drop-zone').style.display='block';
   document.getElementById('crop-area').style.display='none';
@@ -816,12 +841,12 @@ function updateCropPreview(){
 
 function getCroppedDataUrl(){
   const out=document.createElement('canvas');
-  const maxW=1200;
+  const maxW=800;
   let w=Math.round(cropBox.w/canvasScale), h=Math.round(cropBox.h/canvasScale);
   if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
   out.width=w; out.height=h;
   out.getContext('2d').drawImage(cropImg, cropBox.x/canvasScale, cropBox.y/canvasScale, Math.round(cropBox.w/canvasScale), Math.round(cropBox.h/canvasScale), 0,0,w,h);
-  return out.toDataURL('image/jpeg',0.85);
+  return out.toDataURL('image/jpeg',0.65);
 }
 
 window.setCropRatio = function(rw,rh){
@@ -920,17 +945,15 @@ function compressImage(dataUrl, maxWidth, quality){
 
 window.submitPhoto = async function(){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
+  if(!currentUser){ toast('請先登入 Google 帳號才能上傳作品','error'); return; }
   if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
-  
   const title = document.getElementById('f-title').value.trim();
-  const association = document.getElementById('f-association').value.trim(); // 新增這行抓取協進會
-  const company = document.getElementById('f-company').value.trim();         // 新增這行抓取公司
   const author = document.getElementById('f-author').value.trim();
   const desc = document.getElementById('f-desc').value.trim();
-  
   if(!title){ toast('請填寫作品標題','error'); return; }
   if(!author){ toast('請填寫攝影者姓名','error'); return; }
 
+  // 判斷是否有照片（裁切模式或一般模式）
   const cropVisible = document.getElementById('crop-area').style.display !== 'none';
   const hasImage = cropVisible ? (cropImg && cropImg.src && cropImg.complete && cropImg.naturalWidth > 0) : !!currentImgData;
   if(!hasImage){ toast('請選擇一張照片','error'); return; }
@@ -939,8 +962,11 @@ window.submitPhoto = async function(){
   btn.disabled = true; btn.textContent = '上傳中，請稍候...';
 
   try {
+    // 取得圖片 — 優先用裁切預覽，否則用原圖
     let imgData = null;
+    const cropVisible = document.getElementById('crop-area').style.display !== 'none';
     if(cropVisible){
+      // 直接從 cropImg 重新產生裁切結果（最可靠）
       try {
         const out = document.createElement('canvas');
         const sw = Math.round(cropBox.w / canvasScale);
@@ -951,22 +977,17 @@ window.submitPhoto = async function(){
         if(tw > 1200){ th = Math.round(th * 1200 / tw); tw = 1200; }
         out.width = tw; out.height = th;
         out.getContext('2d').drawImage(cropImg, sx, sy, sw, sh, 0, 0, tw, th);
-        imgData = out.toDataURL('image/jpeg', 0.85);
+        imgData = out.toDataURL('image/jpeg', 0.65);
       } catch(ce){ imgData = currentImgData; }
     } else {
       imgData = currentImgData;
     }
     if(!imgData){ toast('請選擇一張照片','error'); btn.disabled=false; btn.textContent='★ 提交英雄作品 ★'; return; }
 
-    const compressed = await compressImage(imgData, 1200, 0.85);
+    const compressed = await compressImage(imgData, 800, 0.65);
 
-    // 這裡要把 association 和 company 一起寫進資料庫
     await addDoc(collection(db, 'photos'), {
-      title, 
-      association, // 新增存入協進會
-      company,     // 新增存入公司
-      author, 
-      description: desc,
+      title, author, description: desc,
       imageUrl: compressed,
       votes: 0, voterCount: 0,
       createdAt: new Date()
@@ -974,7 +995,7 @@ window.submitPhoto = async function(){
 
     closeUpload();
     myUploaded = true;
-    localStorage.setItem('hero_my_uploaded','true');
+    await saveUserUploaded(currentUser.uid);
     toast('★ 英雄作品上傳成功！');
   } catch(e){
     toast('上傳失敗，請再試一次','error');
@@ -989,20 +1010,13 @@ window.openDetail = function(id){
   detailId = id;
   const di = document.getElementById('detail-img');
   if(p.imageUrl){ di.src=p.imageUrl; di.style.display='block'; } else di.style.display='none';
-  
   document.getElementById('detail-title').textContent = p.title;
-  
-  // 新增這兩行：把資料填進你排版好的 ID 裡面
-  document.getElementById('detail-association').textContent = p.association || '無';
-  document.getElementById('detail-company').textContent = p.company || '無';
-  
-  document.getElementById('detail-author').textContent = p.author; // 這裡我幫你把原本的 '★ '+ 拿掉，因為你 HTML 已經有寫 ★ 了
+  document.getElementById('detail-author').textContent = '★ '+p.author;
   document.getElementById('detail-date').textContent = fmt(p.createdAt);
   document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
   document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
-
   const btn = document.getElementById('detail-vote-btn');
-  if(myVotes[id]){
+  if(myVotedPhotoId===id){
     btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; btn.disabled=false;
   } else {
     btn.textContent='★ 為此英雄投票'; btn.className='vote-btn'; btn.disabled=false;
@@ -1033,6 +1047,21 @@ if(!IS_CONFIGURED){
   try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
+
+    // 監聽登入狀態
+    onAuthStateChanged(auth, async (user)=>{
+      currentUser = user;
+      updateAuthUI(user);
+      if(user){
+        await loadUserState(user.uid);
+        renderGallery();
+      } else {
+        myVotedPhotoId = null;
+        myUploaded = false;
+        renderGallery();
+      }
+    });
 
     // Real-time listener
     const q = query(collection(db,'photos'), orderBy('createdAt','desc'));
