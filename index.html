@@ -148,6 +148,14 @@ textarea{resize:vertical;min-height:85px;}
 .empty h3{font-family:'Noto Serif TC',serif;font-size:1.3rem;color:rgba(255,255,255,0.55);margin-bottom:0.5rem;}
 .empty p{font-size:0.88rem;line-height:1.7;}
 
+/* PAGINATION */
+.page-btn{padding:0.45rem 0.9rem;background:rgba(0,0,0,0.35);border:1px solid rgba(245,197,24,0.25);color:rgba(255,255,255,0.6);cursor:pointer;font-family:'Noto Sans TC',sans-serif;font-size:0.82rem;border-radius:2px;transition:all 0.2s;min-width:2.2rem;text-align:center;}
+.page-btn:hover{background:rgba(245,197,24,0.15);border-color:var(--gold);color:var(--gold);}
+.page-btn.active{background:linear-gradient(135deg,var(--gold),var(--gold-deep));color:var(--dark);border-color:var(--gold);font-weight:700;}
+.page-btn:disabled{opacity:0.3;cursor:not-allowed;}
+#search-input::placeholder{color:rgba(255,255,255,0.3);}
+#search-input:focus{border-color:var(--gold);}
+
 /* SETUP BANNER */
 .setup-banner{background:linear-gradient(135deg,rgba(245,197,24,0.15),rgba(245,197,24,0.05));border:2px solid var(--gold);padding:1.5rem;margin-bottom:2rem;position:relative;z-index:1;}
 .setup-banner h3{font-family:'Noto Serif TC',serif;color:var(--gold);font-size:1.1rem;margin-bottom:0.5rem;}
@@ -296,8 +304,19 @@ footer .fg{color:var(--gold);opacity:0.55;}
   </div>
 
   <div id="view-gallery">
+    <!-- 搜尋列 -->
+    <div style="margin-bottom:1.25rem;position:relative;">
+      <input type="text" id="search-input" placeholder="🔍 搜尋作品名稱、作者、公司、協進會..." 
+        oninput="onSearch()"
+        style="width:100%;padding:0.75rem 1rem 0.75rem 1rem;background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.35);color:white;font-family:'Noto Sans TC',sans-serif;font-size:0.9rem;border-radius:2px;outline:none;">
+      <button onclick="clearSearch()" id="clear-search-btn" 
+        style="display:none;position:absolute;right:0.75rem;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:1.1rem;">✕</button>
+    </div>
+
     <div class="toolbar">
-      <div class="count-label">共 <strong id="photo-count">0</strong> 件英雄作品</div>
+      <div class="count-label">共 <strong id="photo-count">0</strong> 件英雄作品
+        <span id="search-count-label" style="display:none;color:var(--gold);margin-left:0.5rem;">（搜尋結果：<strong id="search-count">0</strong> 件）</span>
+      </div>
       <div class="sort-group">
         <button class="sort-btn active" onclick="setSort('newest',event)">最新上傳</button>
         <button class="sort-btn" onclick="setSort('votes',event)">票數最高</button>
@@ -305,6 +324,9 @@ footer .fg{color:var(--gold);opacity:0.55;}
       </div>
     </div>
     <div class="grid" id="grid"></div>
+
+    <!-- 分頁控制 -->
+    <div id="pagination" style="display:flex;justify-content:center;align-items:center;gap:0.5rem;margin-top:2rem;flex-wrap:wrap;"></div>
   </div>
 
   <div id="view-leaderboard" style="display:none">
@@ -450,6 +472,9 @@ let photos = [];
 let currentSort = 'newest';
 let detailId = null;
 let currentImgData = null;
+let currentPage = 1;
+const PAGE_SIZE = 20;
+let searchQuery = '';
 // 用 Firestore 記錄登入用戶的投票與上傳狀態
 let myVotedPhotoId = null;   // 此帳號已投給哪張
 let myUploaded = false;       // 此帳號是否已上傳
@@ -521,22 +546,72 @@ function sorted(){
   return arr;
 }
 
+function filtered(){
+  const q = searchQuery.trim().toLowerCase();
+  if(!q) return sorted();
+  return sorted().filter(p=>
+    (p.title||'').toLowerCase().includes(q) ||
+    (p.author||'').toLowerCase().includes(q) ||
+    (p.company||'').toLowerCase().includes(q) ||
+    (p.association||'').toLowerCase().includes(q)
+  );
+}
+
 window.setSort = function(s, e){
   currentSort = s;
+  currentPage = 1;
   document.querySelectorAll('.sort-btn').forEach(b=>b.classList.remove('active'));
   if(e&&e.target) e.target.classList.add('active');
   renderGallery();
 };
 
+window.onSearch = function(){
+  searchQuery = document.getElementById('search-input').value;
+  currentPage = 1;
+  const clearBtn = document.getElementById('clear-search-btn');
+  clearBtn.style.display = searchQuery ? 'block' : 'none';
+  renderGallery();
+};
+
+window.clearSearch = function(){
+  document.getElementById('search-input').value = '';
+  searchQuery = '';
+  currentPage = 1;
+  document.getElementById('clear-search-btn').style.display = 'none';
+  renderGallery();
+};
+
 function renderGallery(){
   const grid = document.getElementById('grid');
-  const list = sorted();
+  const list = filtered();
+  const total = list.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if(currentPage > totalPages) currentPage = totalPages;
+
+  // 搜尋結果提示
+  const searchLabel = document.getElementById('search-count-label');
+  const searchCount = document.getElementById('search-count');
+  if(searchQuery){
+    searchLabel.style.display = 'inline';
+    searchCount.textContent = total;
+  } else {
+    searchLabel.style.display = 'none';
+  }
+
   if(!list.length){
-    grid.innerHTML=`<div class="empty"><div class="empty-icon">🦸</div><h3>英雄榜尚未開放</h3><p>成為第一位上傳作品的英雄！</p></div>`;
+    grid.innerHTML = searchQuery
+      ? `<div class="empty"><div class="empty-icon">🔍</div><h3>找不到符合的作品</h3><p>請試試其他關鍵字</p></div>`
+      : `<div class="empty"><div class="empty-icon">🦸</div><h3>英雄榜尚未開放</h3><p>成為第一位上傳作品的英雄！</p></div>`;
+    document.getElementById('pagination').innerHTML = '';
     return;
   }
+
+  // 取當頁資料
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageList = list.slice(start, start + PAGE_SIZE);
   const byVote = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
-  grid.innerHTML = list.map(p=>{
+
+  grid.innerHTML = pageList.map(p=>{
     const rank = byVote.findIndex(x=>x.id===p.id);
     const voted = myVotedPhotoId === p.id;
     let rb = '';
@@ -569,7 +644,57 @@ function renderGallery(){
       </div>
     </div>`;
   }).join('');
+
+  // 分頁按鈕
+  renderPagination(totalPages);
 }
+
+function renderPagination(totalPages){
+  const pg = document.getElementById('pagination');
+  if(totalPages <= 1){ pg.innerHTML=''; return; }
+
+  let html = '';
+  // 上一頁
+  html += `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹ 上一頁</button>`;
+
+  // 頁碼
+  const range = [];
+  if(totalPages <= 7){
+    for(let i=1;i<=totalPages;i++) range.push(i);
+  } else {
+    range.push(1);
+    if(currentPage > 3) range.push('...');
+    for(let i=Math.max(2,currentPage-1); i<=Math.min(totalPages-1,currentPage+1); i++) range.push(i);
+    if(currentPage < totalPages-2) range.push('...');
+    range.push(totalPages);
+  }
+
+  range.forEach(r=>{
+    if(r==='...'){
+      html += `<span style="color:rgba(255,255,255,0.3);padding:0 0.3rem;">…</span>`;
+    } else {
+      html += `<button class="page-btn ${r===currentPage?'active':''}" onclick="goPage(${r})">${r}</button>`;
+    }
+  });
+
+  // 下一頁
+  html += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>下一頁 ›</button>`;
+
+  // 頁數資訊
+  html += `<span style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-left:0.5rem;">第 ${currentPage}/${totalPages} 頁</span>`;
+
+  pg.innerHTML = html;
+}
+
+window.goPage = function(page){
+  const list = filtered();
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
+  if(page < 1 || page > totalPages) return;
+  currentPage = page;
+  renderGallery();
+  // 捲回頂部
+  document.getElementById('view-gallery').scrollIntoView({behavior:'smooth', block:'start'});
+};
 
 function renderLeaderboard(){
   const list = [...photos].sort((a,b)=>(b.votes||0)-(a.votes||0));
