@@ -329,8 +329,10 @@ footer .fg{color:var(--gold);opacity:0.55;}
     </div>
     <div class="modal-body">
       <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
+      <div class="field"><label>★ 協進會名稱</label><input type="text" id="f-association" placeholder="例如：大發、和發、鳳山、臨海"></div>
+      <div class="field"><label>★ 公司名稱</label><input type="text" id="f-company" placeholder="你的公司或單位名稱"></div>
       <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
-      <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
+      <div class="field"><label>作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
       <div class="field">
         <label>★ 上傳照片</label>
         <div class="drop-zone" id="drop-zone">
@@ -373,11 +375,18 @@ footer .fg{color:var(--gold);opacity:0.55;}
     <div class="detail-body">
       <div class="detail-badge">★ 職場英雄作品</div>
       <h2 class="detail-title" id="detail-title"></h2>
-      <div class="detail-meta">
-        <span class="detail-author" id="detail-author"></span>
-        <span class="detail-date" id="detail-date"></span>
+      <div class="detail-meta" style="flex-direction:column;align-items:flex-start;gap:0.5rem;">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:0.4rem 0.75rem;width:100%;">
+          <span style="font-size:0.8rem;color:var(--gold);font-weight:700;">★ 協進會名稱：</span><span class="detail-author" id="detail-association" style="font-size:0.88rem;color:var(--white);"></span>
+          <span style="font-size:0.8rem;color:var(--gold);font-weight:700;">★ 公司名稱：</span><span id="detail-company" style="font-size:0.88rem;color:var(--white);"></span>
+          <span style="font-size:0.8rem;color:var(--gold);font-weight:700;">★ 攝影者姓名：</span><span class="detail-author" id="detail-author" style="font-size:0.88rem;color:var(--gold);font-weight:700;"></span>
+          <span style="font-size:0.8rem;color:var(--gold);font-weight:700;">★ 上傳日期：</span><span class="detail-date" id="detail-date" style="font-size:0.88rem;color:rgba(255,255,255,0.5);"></span>
+        </div>
       </div>
-      <p class="detail-desc" id="detail-desc"></p>
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:0.8rem;color:var(--gold);font-weight:700;margin-bottom:0.4rem;">★ 作品介紹：</div>
+        <p class="detail-desc" id="detail-desc"></p>
+      </div>
       <div class="detail-vote-row">
         <div>
           <div class="detail-vote-num" id="detail-votes">0<small>票</small></div>
@@ -753,7 +762,7 @@ window.openUpload = function(){
 window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
 
 function resetForm(){
-  ['f-title','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-association','f-company','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-file').value='';
   document.getElementById('drop-zone').style.display='block';
   document.getElementById('crop-area').style.display='none';
@@ -991,9 +1000,13 @@ window.submitPhoto = async function(){
   if(!currentUser){ toast('請先登入 Google 帳號才能上傳作品','error'); return; }
   if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
   const title = document.getElementById('f-title').value.trim();
+  const association = document.getElementById('f-association').value.trim();
+  const company = document.getElementById('f-company').value.trim();
   const author = document.getElementById('f-author').value.trim();
   const desc = document.getElementById('f-desc').value.trim();
   if(!title){ toast('請填寫作品標題','error'); return; }
+  if(!association){ toast('請填寫協進會名稱','error'); return; }
+  if(!company){ toast('請填寫公司名稱','error'); return; }
   if(!author){ toast('請填寫攝影者姓名','error'); return; }
 
   // 判斷是否有照片（裁切模式或一般模式）
@@ -1030,7 +1043,7 @@ window.submitPhoto = async function(){
     const compressed = await compressImage(imgData, 800, 0.65);
 
     await addDoc(collection(db, 'photos'), {
-      title, author, description: desc,
+      title, author, association, company, description: desc,
       imageUrl: compressed,
       votes: 0, voterCount: 0,
       createdAt: new Date()
@@ -1054,7 +1067,9 @@ window.openDetail = function(id){
   const di = document.getElementById('detail-img');
   if(p.imageUrl){ di.src=p.imageUrl; di.style.display='block'; } else di.style.display='none';
   document.getElementById('detail-title').textContent = p.title;
-  document.getElementById('detail-author').textContent = '★ '+p.author;
+  document.getElementById('detail-association').textContent = p.association || '—';
+  document.getElementById('detail-company').textContent = p.company || '—';
+  document.getElementById('detail-author').textContent = p.author;
   document.getElementById('detail-date').textContent = fmt(p.createdAt);
   document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
   document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
