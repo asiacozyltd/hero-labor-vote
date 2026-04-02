@@ -318,11 +318,11 @@ footer .fg{color:var(--gold);opacity:0.55;}
       <button class="close-btn" onclick="closeUpload()">✕</button>
     </div>
     <div class="modal-body">
-      <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
-      <div class="field"><label>★ 協進會名稱</label><input type="text" id="f-author" placeholder="大發、和發、鳳山、臨海，請擇一填寫"></div>
-      <div class="field"><label>★ 公司名稱</label><input type="text" id="f-author" placeholder="貴公司寶號"></div>
-      <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
-      <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
+        <div class="field"><label>★ 作品標題</label><input type="text" id="f-title" placeholder="為你的英雄作品命名"></div>
+        <div class="field"><label>★ 協進會名稱</label><input type="text" id="f-association" placeholder="大發、和發、鳳山、臨海，請擇一填寫"></div>
+        <div class="field"><label>★ 公司名稱</label><input type="text" id="f-company" placeholder="貴公司寶號"></div>
+        <div class="field"><label>★ 攝影者姓名</label><input type="text" id="f-author" placeholder="你的名字或暱稱"></div>
+        <div class="field"><label>★ 作品介紹</label><textarea id="f-desc" placeholder="分享這張照片的故事、拍攝地點、職人精神..."></textarea></div>
       <div class="field">
         <label>★ 上傳照片</label>
         <div class="drop-zone" id="drop-zone">
@@ -654,7 +654,7 @@ window.openUpload = function(){
 window.closeUpload = function(){ document.getElementById('upload-overlay').classList.remove('open'); resetForm(); };
 
 function resetForm(){
-  ['f-title','f-author','f-desc'].forEach(id=>document.getElementById(id).value='');
+  ['f-title', 'f-association', 'f-company', 'f-author', 'f-desc'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-file').value='';
   document.getElementById('drop-zone').style.display='block';
   document.getElementById('crop-area').style.display='none';
@@ -889,15 +889,17 @@ function compressImage(dataUrl, maxWidth, quality){
 
 window.submitPhoto = async function(){
   if(!IS_CONFIGURED){ toast('請先完成 Firebase 設定','error'); return; }
-  // 限制每人只能上傳一張
   if(myUploaded){ toast('每人只能上傳一件作品，你已上傳過了！','error'); return; }
+  
   const title = document.getElementById('f-title').value.trim();
+  const association = document.getElementById('f-association').value.trim(); // 新增這行抓取協進會
+  const company = document.getElementById('f-company').value.trim();         // 新增這行抓取公司
   const author = document.getElementById('f-author').value.trim();
   const desc = document.getElementById('f-desc').value.trim();
+  
   if(!title){ toast('請填寫作品標題','error'); return; }
   if(!author){ toast('請填寫攝影者姓名','error'); return; }
 
-  // 判斷是否有照片（裁切模式或一般模式）
   const cropVisible = document.getElementById('crop-area').style.display !== 'none';
   const hasImage = cropVisible ? (cropImg && cropImg.src && cropImg.complete && cropImg.naturalWidth > 0) : !!currentImgData;
   if(!hasImage){ toast('請選擇一張照片','error'); return; }
@@ -906,11 +908,8 @@ window.submitPhoto = async function(){
   btn.disabled = true; btn.textContent = '上傳中，請稍候...';
 
   try {
-    // 取得圖片 — 優先用裁切預覽，否則用原圖
     let imgData = null;
-    const cropVisible = document.getElementById('crop-area').style.display !== 'none';
     if(cropVisible){
-      // 直接從 cropImg 重新產生裁切結果（最可靠）
       try {
         const out = document.createElement('canvas');
         const sw = Math.round(cropBox.w / canvasScale);
@@ -930,8 +929,13 @@ window.submitPhoto = async function(){
 
     const compressed = await compressImage(imgData, 1200, 0.85);
 
+    // 這裡要把 association 和 company 一起寫進資料庫
     await addDoc(collection(db, 'photos'), {
-      title, author, description: desc,
+      title, 
+      association, // 新增存入協進會
+      company,     // 新增存入公司
+      author, 
+      description: desc,
       imageUrl: compressed,
       votes: 0, voterCount: 0,
       createdAt: new Date()
@@ -954,11 +958,18 @@ window.openDetail = function(id){
   detailId = id;
   const di = document.getElementById('detail-img');
   if(p.imageUrl){ di.src=p.imageUrl; di.style.display='block'; } else di.style.display='none';
+  
   document.getElementById('detail-title').textContent = p.title;
-  document.getElementById('detail-author').textContent = '★ '+p.author;
+  
+  // 新增這兩行：把資料填進你排版好的 ID 裡面
+  document.getElementById('detail-association').textContent = p.association || '無';
+  document.getElementById('detail-company').textContent = p.company || '無';
+  
+  document.getElementById('detail-author').textContent = p.author; // 這裡我幫你把原本的 '★ '+ 拿掉，因為你 HTML 已經有寫 ★ 了
   document.getElementById('detail-date').textContent = fmt(p.createdAt);
   document.getElementById('detail-desc').textContent = p.description||'（無作品介紹）';
   document.getElementById('detail-votes').innerHTML = (p.votes||0)+'<small>票</small>';
+
   const btn = document.getElementById('detail-vote-btn');
   if(myVotes[id]){
     btn.textContent='✓ 已投票 ↩ 點此撤銷'; btn.className='vote-btn voted'; btn.disabled=false;
