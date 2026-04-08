@@ -279,7 +279,6 @@ footer .fg{color:var(--gold);opacity:0.55;}
   </div>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num" id="stat-photos">-</div><div class="stat-label">參賽作品</div></div>
-    <div class="stat"><div class="stat-num" id="stat-votes">-</div><div class="stat-label">累計票數</div></div>
     <div class="stat"><div class="stat-num" id="stat-voters">-</div><div class="stat-label">投票人次</div></div>
   </div>
 </div>
@@ -534,12 +533,18 @@ function hideLoading(){
   setTimeout(()=>ls.style.display='none', 500);
 }
 
-function updateStats(){
+async function updateStats(){
   document.getElementById('stat-photos').textContent = totalPhotoCount || photos.length;
-  const totalVotes = photos.reduce((s,p)=>s+(p.votes||0),0);
-  const uniqueVoters = photos.reduce((s,p)=>s+(p.voterCount||0),0);
-  document.getElementById('stat-votes').textContent = totalVotes;
-  document.getElementById('stat-voters').textContent = uniqueVoters;
+  // 從 Firestore 讀取所有作品的得票數總和
+  try {
+    const snap = await getDocs(query(collection(db,'photos')));
+    const totalVoters = snap.docs.reduce((s,d)=>s+(d.data().votes||0), 0);
+    document.getElementById('stat-voters').textContent = totalVoters;
+  } catch(e){
+    // 退回用當頁計算
+    const totalVoters = photos.reduce((s,p)=>s+(p.votes||0),0);
+    document.getElementById('stat-voters').textContent = totalVoters;
+  }
   document.getElementById('photo-count').textContent = totalPhotoCount || photos.length;
 }
 
@@ -810,6 +815,7 @@ window.vote = async function(id){
       toast('★ 投票成功！感謝你為英雄發聲！');
     }
     renderGallery();
+    updateStats(); // 重新計算投票人次
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
       if(myVotedPhotoId===id){
@@ -1414,7 +1420,6 @@ document.getElementById('admin-overlay').addEventListener('click',e=>{ if(e.targ
 if(!IS_CONFIGURED){
   document.getElementById('firebase-notice').style.display='block';
   document.getElementById('stat-photos').textContent='?';
-  document.getElementById('stat-votes').textContent='?';
   document.getElementById('stat-voters').textContent='?';
   hideLoading();
   renderGallery();
