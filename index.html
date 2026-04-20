@@ -279,6 +279,7 @@ footer .fg{color:var(--gold);opacity:0.55;}
   </div>
   <div class="hero-stats">
     <div class="stat"><div class="stat-num" id="stat-photos">-</div><div class="stat-label">參賽作品</div></div>
+    <div class="stat"><div class="stat-num" id="stat-votes">-</div><div class="stat-label">累計票數</div></div>
     <div class="stat"><div class="stat-num" id="stat-voters">-</div><div class="stat-label">投票人次</div></div>
   </div>
 </div>
@@ -344,13 +345,6 @@ footer .fg{color:var(--gold);opacity:0.55;}
 <footer>
   <div class="fg">★ 職場英雄 | 致敬每一位在崗位上默默付出的真正超人 ★</div>
   <div style="margin-top:0.3rem">大發・和發・鳳山・臨海產業園區廠商協進會</div>
-  <div style="margin-top:1.5rem;padding-top:1.25rem;border-top:1px solid rgba(245,197,24,0.2);max-width:600px;margin-left:auto;margin-right:auto;text-align:left;">
-    <div style="font-family:'Noto Serif TC',serif;font-size:0.85rem;font-weight:700;color:var(--gold);margin-bottom:0.6rem;letter-spacing:0.05em;">【小提醒：關於評選規則】</div>
-    <div style="font-size:0.82rem;color:var(--white);line-height:1.9;letter-spacing:0.03em;">
-      為了讓更多優秀團隊能被看見，本次活動規定每一間公司僅能有一個獲獎名額。<br>
-      如果貴公司上傳了多件精彩作品，會選取其中「分數最高」的那一件代表獲獎，同一間公司不會同時有兩位（或以上）得獎者喔！
-    </div>
-  </div>
 </footer>
 
 <!-- UPLOAD MODAL -->
@@ -540,18 +534,12 @@ function hideLoading(){
   setTimeout(()=>ls.style.display='none', 500);
 }
 
-async function updateStats(){
+function updateStats(){
   document.getElementById('stat-photos').textContent = totalPhotoCount || photos.length;
-  // 從 Firestore 讀取所有作品的得票數總和
-  try {
-    const snap = await getDocs(query(collection(db,'photos')));
-    const totalVoters = snap.docs.reduce((s,d)=>s+(d.data().votes||0), 0);
-    document.getElementById('stat-voters').textContent = totalVoters;
-  } catch(e){
-    // 退回用當頁計算
-    const totalVoters = photos.reduce((s,p)=>s+(p.votes||0),0);
-    document.getElementById('stat-voters').textContent = totalVoters;
-  }
+  const totalVotes = photos.reduce((s,p)=>s+(p.votes||0),0);
+  const uniqueVoters = photos.reduce((s,p)=>s+(p.voterCount||0),0);
+  document.getElementById('stat-votes').textContent = totalVotes;
+  document.getElementById('stat-voters').textContent = uniqueVoters;
   document.getElementById('photo-count').textContent = totalPhotoCount || photos.length;
 }
 
@@ -822,7 +810,6 @@ window.vote = async function(id){
       toast('★ 投票成功！感謝你為英雄發聲！');
     }
     renderGallery();
-    updateStats(); // 重新計算投票人次
     if(detailId===id){
       const btn = document.getElementById('detail-vote-btn');
       if(myVotedPhotoId===id){
@@ -1054,14 +1041,28 @@ window.adminLogout = function(){
 window.deletePhoto = async function(e, id){
   e.stopPropagation();
   if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
-  if(!confirm('確定要刪除這件作品嗎？此動作無法復原！')) return;
+  if(!confirm('確定要刪除這件作品嗎？此動作無法復原！\n\n（已投票給此作品的帳號將恢復投票資格）')) return;
   try {
     const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+    // 找出所有投票給此作品的用戶，清除他們的投票記錄
+    const usersSnap = await getDocs(
+      query(collection(db,'users'), where('votedPhotoId','==', id))
+    );
+    const clearVotes = usersSnap.docs.map(d =>
+      setDoc(doc(db,'users', d.id), { votedPhotoId: null }, { merge: true })
+    );
+    await Promise.all(clearVotes);
+
+    // 刪除作品
     await deleteDoc(doc(db,'photos',id));
+
     totalPhotoCount = Math.max(0, totalPhotoCount-1);
     pageCursors = [null];
     await loadPage(Math.min(currentPage, Math.ceil(totalPhotoCount/PAGE_SIZE)||1));
-    toast('✓ 作品已刪除');
+
+    const clearedCount = usersSnap.docs.length;
+    toast('✓ 作品已刪除' + (clearedCount > 0 ? '，已恢復 ' + clearedCount + ' 位用戶的投票資格' : ''));
   } catch(err){
     toast('刪除失敗，請再試一次','error');
     console.error(err);
@@ -1427,6 +1428,7 @@ document.getElementById('admin-overlay').addEventListener('click',e=>{ if(e.targ
 if(!IS_CONFIGURED){
   document.getElementById('firebase-notice').style.display='block';
   document.getElementById('stat-photos').textContent='?';
+  document.getElementById('stat-votes').textContent='?';
   document.getElementById('stat-voters').textContent='?';
   hideLoading();
   renderGallery();
