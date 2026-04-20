@@ -176,6 +176,9 @@ textarea{resize:vertical;min-height:85px;}
 .delete-btn{display:none;padding:0.4rem 0.8rem;background:rgba(180,0,0,0.7);border:1px solid rgba(255,80,80,0.4);color:#ff9090;cursor:pointer;font-size:0.75rem;font-family:'Noto Sans TC',sans-serif;border-radius:2px;transition:all 0.2s;white-space:nowrap;}
 .delete-btn:hover{background:rgba(220,0,0,0.8);color:white;}
 .admin-mode .delete-btn{display:block;}
+.edit-votes-btn{display:none;padding:0.4rem 0.8rem;background:rgba(0,80,180,0.7);border:1px solid rgba(100,160,255,0.4);color:#99ccff;cursor:pointer;font-size:0.75rem;font-family:'Noto Sans TC',sans-serif;border-radius:2px;transition:all 0.2s;white-space:nowrap;}
+.edit-votes-btn:hover{background:rgba(0,100,220,0.8);color:white;}
+.admin-mode .edit-votes-btn{display:block;}
 .admin-pw-form{display:flex;gap:0.5rem;align-items:center;margin-top:0.75rem;}
 .admin-pw-input{flex:1;padding:0.55rem 0.8rem;background:rgba(0,0,0,0.4);border:1px solid rgba(245,197,24,0.25);color:white;font-size:0.85rem;border-radius:2px;outline:none;}
 .admin-pw-input:focus{border-color:var(--gold);}
@@ -292,7 +295,7 @@ footer .fg{color:var(--gold);opacity:0.55;}
 
 <div class="main">
   <div id="admin-bar" class="admin-bar">
-    <span>🔐 管理員模式已啟用 — 可刪除任何作品</span>
+    <span>🔐 管理員模式已啟用 — 可刪除作品 / 修改票數</span>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
       <button class="admin-logout" onclick="exportExcel()" style="border-color:rgba(100,200,100,0.5);color:#90ee90;">📊 匯出Excel</button>
       <button class="admin-logout" onclick="addTestData()" style="border-color:rgba(100,150,255,0.5);color:#99bbff;" id="test-data-btn">🧪 新增100筆測試</button>
@@ -697,6 +700,7 @@ function renderGallery(){
         <div><span class="vote-count">${p.votes||0}</span><span class="vote-label">票</span></div>
         <div style="display:flex;gap:0.5rem;align-items:center;">
           <button class="delete-btn" onclick="deletePhoto(event,'${p.id}')">🗑 刪除</button>
+          <button class="edit-votes-btn" onclick="editVotes(event,'${p.id}',${p.votes||0})">✏️ 票數</button>
           ${isVotingOpen()
             ? `<button class="vote-btn ${voted?'voted':''}" onclick="vote('${p.id}')">
                 ${voted?'✓ 已投票 ↩':'★ 投票'}
@@ -1044,6 +1048,30 @@ window.adminLogout = function(){
   document.getElementById('admin-nav-btn').style.color = '';
   toast('已登出管理員模式','info');
 };
+window.editVotes = async function(e, id, currentVotes){
+  e.stopPropagation();
+  if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
+  const p = photos.find(x=>x.id===id);
+  const title = p ? p.title : id;
+  const input = prompt('修改「' + title + '」的票數\n目前票數：' + currentVotes + ' 票\n\n請輸入新票數：', currentVotes);
+  if(input === null) return;
+  const newVotes = parseInt(input);
+  if(isNaN(newVotes) || newVotes < 0){
+    toast('請輸入有效的數字（0或以上）','error');
+    return;
+  }
+  try {
+    await setDoc(doc(db,'photos',id), { votes: newVotes }, { merge: true });
+    if(p) p.votes = newVotes;
+    renderGallery();
+    updateStats();
+    toast('✅ 票數已更新為 ' + newVotes + ' 票');
+  } catch(err){
+    toast('更新失敗，請再試一次','error');
+    console.error(err);
+  }
+};
+
 window.deletePhoto = async function(e, id){
   e.stopPropagation();
   if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
