@@ -1075,14 +1075,47 @@ window.editVotes = async function(e, id, currentVotes){
 window.deletePhoto = async function(e, id){
   e.stopPropagation();
   if(!isAdmin){ toast('請先登入管理員模式','error'); return; }
-  if(!confirm('確定要刪除這件作品嗎？此動作無法復原！')) return;
+  if(!confirm('確定要刪除這件作品嗎？此動作無法復原！\n\n（上傳者可重新上傳，已投票的帳號恢復投票資格）')) return;
   try {
     const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+
+    // 1. 取得作品資料，找出上傳者 UID
+    const photoSnap = await getDoc(doc(db,'photos',id));
+    const uploaderId = photoSnap.exists() ? photoSnap.data().uploaderId : null;
+
+    // 2. 找出所有投票給此作品的用戶，清除他們的投票記錄
+    const usersSnap = await getDocs(
+      query(collection(db,'users'), where('votedPhotoId','==', id))
+    );
+    const updates = usersSnap.docs.map(d =>
+      setDoc(doc(db,'users', d.id), { votedPhotoId: null }, { merge: true })
+    );
+
+    // 3. 清除上傳者的「已上傳」記錄，讓他可以重新上傳
+    if(uploaderId){
+      updates.push(
+        setDoc(doc(db,'users', uploaderId), { uploaded: false }, { merge: true })
+      );
+    }
+
+    await Promise.all(updates);
+
+    // 4. 刪除作品
     await deleteDoc(doc(db,'photos',id));
+
+    // 5. 若刪除的是自己上傳的作品，更新本機狀態
+    if(uploaderId && currentUser && uploaderId === currentUser.uid){
+      myUploaded = false;
+    }
+
     totalPhotoCount = Math.max(0, totalPhotoCount-1);
     pageCursors = [null];
     await loadPage(Math.min(currentPage, Math.ceil(totalPhotoCount/PAGE_SIZE)||1));
-    toast('✓ 作品已刪除');
+
+    const msgs = [];
+    if(usersSnap.docs.length > 0) msgs.push(usersSnap.docs.length + ' 位用戶恢復投票資格');
+    if(uploaderId) msgs.push('上傳者可重新上傳');
+    toast('✓ 作品已刪除' + (msgs.length ? '，' + msgs.join('、') : ''));
   } catch(err){
     toast('刪除失敗，請再試一次','error');
     console.error(err);
